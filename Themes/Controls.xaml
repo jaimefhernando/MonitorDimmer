@@ -533,8 +533,8 @@
                                                 BorderThickness="2" CornerRadius="3" />
                                     </Grid>
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock c:Tracking.Text="MONITOR" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextMain}" />
-                                        <TextBlock c:Tracking.Text="DIMMER" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextMuted}" />
+                                        <TextBlock c:Tracking.Text="SHADE" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextMain}" />
+                                        <TextBlock c:Tracking.Text="PLAY" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource Accent}" />
                                     </StackPanel>
                                 </StackPanel>
                                 <!-- Version box (TabControl.Tag holds the text) -->

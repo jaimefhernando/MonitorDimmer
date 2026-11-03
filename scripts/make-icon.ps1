@@ -1,5 +1,5 @@
 # Writes assets\app.ico (16-256 px) with the same drawing as Platform\AppIcon.cs:
-# a bright amber monitor in front of a dimmed one, under an amber crescent.
+# a bright amber monitor in front of a dimmed one.
 Add-Type -AssemblyName System.Drawing
 $out = Join-Path $PSScriptRoot "..\assets\app.ico"
 New-Item -ItemType Directory -Force (Split-Path $out) | Out-Null
@@ -26,10 +26,6 @@ function Draw-Png([int]$size) {
     $frame = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 32, 36, 44))
     $screen = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 255, 196, 64))
     Fill-Rounded $g $dim (13 * $s) (5 * $s) (18 * $s) (13 * $s) (2.5 * $s)
-    $arc = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(255, 255, 214, 110), (2 * $s))
-    $arc.StartCap = 'Round'; $arc.EndCap = 'Round'
-    $g.DrawArc($arc, (3 * $s), (2 * $s), (26 * $s), (22 * $s), 195, 150)
-    $arc.Dispose()
     Fill-Rounded $g $frame (1 * $s) (9 * $s) (20 * $s) (15 * $s) (2.5 * $s)
     Fill-Rounded $g $screen (3 * $s) (11 * $s) (16 * $s) (11 * $s) (1.5 * $s)
     $g.FillRectangle($frame, 7 * $s, 24 * $s, 8 * $s, 3 * $s)
