@@ -177,6 +177,12 @@ internal static class Native
     [DllImport("dwmapi.dll")]
     public static extern int DwmSetWindowAttribute(IntPtr hWnd, int attribute, ref int value, int size);
 
+    public const int SM_CXSIZEFRAME = 32;
+    public const int SM_CXPADDEDBORDER = 92;
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetricsForDpi(int index, uint dpi);
+
     const uint TH32CS_SNAPPROCESS = 0x2;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

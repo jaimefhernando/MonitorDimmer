@@ -374,6 +374,58 @@ public partial class MainWindow : Window
 
     void Exit_Click(object sender, RoutedEventArgs e) => ((App)Application.Current).ExitApp();
 
+    // --- Custom title bar ---
+
+    void Minimize_Click(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
+
+    void Maximize_Click(object sender, RoutedEventArgs e)
+    {
+        if (WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(this);
+        else SystemCommands.MaximizeWindow(this);
+    }
+
+    // Goes through OnClosing, so it still hides to the tray
+    void Close_Click(object sender, RoutedEventArgs e) => SystemCommands.CloseWindow(this);
+
+    protected override void OnStateChanged(EventArgs e)
+    {
+        base.OnStateChanged(e);
+        UpdateChromeForState();
+    }
+
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        UpdateChromeForState();
+    }
+
+    /// <summary>
+    /// A maximized WindowChrome window hangs past the screen edge by the resize frame,
+    /// so pad it back in, drop the outline and swap the maximize/restore icon.
+    /// </summary>
+    void UpdateChromeForState()
+    {
+        bool maximized = WindowState == WindowState.Maximized;
+        MaximizeIcon.Visibility = maximized ? Visibility.Collapsed : Visibility.Visible;
+        RestoreIcon.Visibility = maximized ? Visibility.Visible : Visibility.Collapsed;
+        MaximizeButton.ToolTip = maximized ? "Restore" : "Maximize";
+        System.Windows.Automation.AutomationProperties.SetName(MaximizeButton, maximized ? "Restore" : "Maximize");
+
+        if (!maximized)
+        {
+            RootBorder.BorderThickness = new Thickness(1);
+            RootBorder.Margin = new Thickness(0);
+            return;
+        }
+        var dpi = VisualTreeHelper.GetDpi(this);
+        uint dpiValue = (uint)Math.Round(96 * dpi.DpiScaleX);
+        int px = Interop.Native.GetSystemMetricsForDpi(Interop.Native.SM_CXSIZEFRAME, dpiValue)
+               + Interop.Native.GetSystemMetricsForDpi(Interop.Native.SM_CXPADDEDBORDER, dpiValue);
+        double inset = px / dpi.DpiScaleX;
+        RootBorder.BorderThickness = new Thickness(0);
+        RootBorder.Margin = new Thickness(inset);
+    }
+
     protected override void OnClosing(CancelEventArgs e)
     {
         // Closing the window keeps the app running in the tray
