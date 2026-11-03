@@ -2,7 +2,7 @@ using System.Reflection;
 using Velopack;
 using Velopack.Sources;
 
-namespace MonitorDimmer.Platform;
+namespace Shadeplay.Platform;
 
 /// <summary>Checks for, downloads and applies new versions through Velopack.</summary>
 public sealed class Updater
@@ -63,7 +63,7 @@ public sealed class Updater
             SetStatus($"Downloading version {version}…");
             await manager.DownloadUpdatesAsync(info, p => SetStatus($"Downloading version {version}… {p} %"));
             downloaded = info;
-            SetStatus($"Version {version} is ready. It installs when you restart Monitor Dimmer.");
+            SetStatus($"Version {version} is ready. It installs when you restart Shadeplay.");
             Log.Write($"Update {version} downloaded");
         }
         catch (Exception ex)

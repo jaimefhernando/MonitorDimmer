@@ -1,7 +1,7 @@
-using MonitorDimmer.Platform;
+using Shadeplay.Platform;
 using Velopack;
 
-namespace MonitorDimmer;
+namespace Shadeplay;
 
 public static class Program
 {

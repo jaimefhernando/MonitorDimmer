@@ -3,12 +3,12 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using MonitorDimmer.Core;
-using MonitorDimmer.Core.Rgb;
-using MonitorDimmer.Platform;
-using MonitorDimmer.UI.Controls;
+using Shadeplay.Core;
+using Shadeplay.Core.Rgb;
+using Shadeplay.Platform;
+using Shadeplay.UI.Controls;
 
-namespace MonitorDimmer.UI;
+namespace Shadeplay.UI;
 
 public partial class MainWindow : Window
 {
@@ -70,7 +70,7 @@ public partial class MainWindow : Window
         Activated += (_, _) => RefreshDevices();
 
         var updater = ((App)Application.Current).Updater;
-        VersionText.Text = $"Monitor Dimmer {Updater.CurrentVersion}";
+        VersionText.Text = $"Shadeplay {Updater.CurrentVersion}";
         updater.StateChanged += () => Dispatcher.BeginInvoke(new Action(ShowUpdateState));
         ShowUpdateState();
 
@@ -329,8 +329,8 @@ public partial class MainWindow : Window
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
             Title = "Export settings",
-            FileName = $"Monitor Dimmer settings {DateTime.Now:yyyy-MM-dd}.json",
-            Filter = "Monitor Dimmer settings (*.json)|*.json",
+            FileName = $"Shadeplay settings {DateTime.Now:yyyy-MM-dd}.json",
+            Filter = "Shadeplay settings (*.json)|*.json",
         };
         if (dialog.ShowDialog(this) != true) return;
         try
@@ -349,7 +349,7 @@ public partial class MainWindow : Window
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
             Title = "Import settings",
-            Filter = "Monitor Dimmer settings (*.json)|*.json",
+            Filter = "Shadeplay settings (*.json)|*.json",
         };
         if (dialog.ShowDialog(this) != true) return;
 
@@ -359,7 +359,7 @@ public partial class MainWindow : Window
             return;
         }
         var answer = MessageBox.Show(this,
-            "Replace all current settings with the ones in this file? Monitor Dimmer restarts to load them.",
+            "Replace all current settings with the ones in this file? Shadeplay restarts to load them.",
             "Import settings", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
         if (answer == MessageBoxResult.OK) ((App)Application.Current).ImportSettingsAndRestart(dialog.FileName);
     }

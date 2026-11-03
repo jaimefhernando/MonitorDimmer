@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
-using MonitorDimmer.Core.Rgb;
+using Shadeplay.Core.Rgb;
 
-namespace MonitorDimmer.Core;
+namespace Shadeplay.Core;
 
 /// <summary>
 /// Things to do when dimming starts and ends: built-in actions, RGB lighting and the user's own

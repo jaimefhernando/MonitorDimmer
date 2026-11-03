@@ -2,7 +2,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-namespace MonitorDimmer.Core.Rgb;
+namespace Shadeplay.Core.Rgb;
 
 /// <summary>
 /// Razer Synapse's Chroma SDK REST API. While a session is open its effects replace the user's
@@ -85,9 +85,9 @@ internal sealed class RazerChroma : IDisposable
     {
         var app = new
         {
-            title = "Monitor Dimmer",
+            title = "Shadeplay",
             description = "Dims RGB lighting while other monitors are dimmed",
-            author = new { name = "Monitor Dimmer", contact = "local" },
+            author = new { name = "Shadeplay", contact = "local" },
             device_supported = Devices,
             category = "application",
         };

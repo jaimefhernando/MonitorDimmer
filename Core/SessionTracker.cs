@@ -2,7 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows.Threading;
 
-namespace MonitorDimmer.Core;
+namespace Shadeplay.Core;
 
 /// <param name="ExeName">"eldenring.exe".</param>
 /// <param name="Name">What to show: the profile name, else the window title, else the exe.</param>

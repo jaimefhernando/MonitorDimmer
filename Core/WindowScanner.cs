@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.IO;
-using MonitorDimmer.Interop;
+using Shadeplay.Interop;
 
-namespace MonitorDimmer.Core;
+namespace Shadeplay.Core;
 
 public sealed record WindowInfo(
     IntPtr Handle, int ProcessId, string ProcessName, string ExePath, string Title, RECT Bounds, IntPtr Monitor,

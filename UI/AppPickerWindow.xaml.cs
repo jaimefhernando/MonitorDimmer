@@ -1,9 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using MonitorDimmer.Core;
+using Shadeplay.Core;
 
-namespace MonitorDimmer.UI;
+namespace Shadeplay.UI;
 
 public partial class AppPickerWindow : Window
 {

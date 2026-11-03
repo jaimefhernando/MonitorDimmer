@@ -2,16 +2,16 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
-using MonitorDimmer.Core;
-using MonitorDimmer.Platform;
-using MonitorDimmer.UI;
+using Shadeplay.Core;
+using Shadeplay.Platform;
+using Shadeplay.UI;
 
-namespace MonitorDimmer;
+namespace Shadeplay;
 
 public partial class App : Application
 {
-    const string InstanceMutexName = @"Local\MonitorDimmer.SingleInstance";
-    const string ShowSignalName = @"Local\MonitorDimmer.ShowSettings";
+    const string InstanceMutexName = @"Local\Shadeplay.SingleInstance";
+    const string ShowSignalName = @"Local\Shadeplay.ShowSettings";
 
     Mutex? instanceMutex;
     EventWaitHandle? showSignal;

@@ -1,8 +1,8 @@
 using System.Windows.Input;
 using System.Windows.Interop;
-using MonitorDimmer.Interop;
+using Shadeplay.Interop;
 
-namespace MonitorDimmer.Platform;
+namespace Shadeplay.Platform;
 
 /// <summary>One system-wide hotkey, received on a hidden message window.</summary>
 internal sealed class HotkeyManager : IDisposable
@@ -15,7 +15,7 @@ internal sealed class HotkeyManager : IDisposable
 
     public HotkeyManager()
     {
-        source = new HwndSource(new HwndSourceParameters("MonitorDimmerHotkey") { ParentWindow = HWND_MESSAGE });
+        source = new HwndSource(new HwndSourceParameters("ShadeplayHotkey") { ParentWindow = HWND_MESSAGE });
         source.AddHook(WndProc);
     }
 

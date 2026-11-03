@@ -5,7 +5,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace MonitorDimmer.Platform;
+namespace Shadeplay.Platform;
 
 /// <summary>Draws the app icon: one bright monitor next to a dimmed one.</summary>
 internal static class AppIcon
@@ -29,6 +29,11 @@ internal static class AppIcon
             // Dimmed monitor behind
             using (var dim = new SolidBrush(System.Drawing.Color.FromArgb(255, 70, 74, 84)))
                 FillRounded(g, dim, new RectangleF(13 * s, 5 * s, 18 * s, 13 * s), 2.5f * s);
+
+            // Amber crescent arcing over both screens
+            using (var arc = new System.Drawing.Pen(System.Drawing.Color.FromArgb(255, 255, 214, 110), 2f * s)
+                   { StartCap = LineCap.Round, EndCap = LineCap.Round })
+                g.DrawArc(arc, 3 * s, 2 * s, 26 * s, 22 * s, 195, 150);
 
             // Bright monitor in front
             using (var frame = new SolidBrush(System.Drawing.Color.FromArgb(255, 32, 36, 44)))

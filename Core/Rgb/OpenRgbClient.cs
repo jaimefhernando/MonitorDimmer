@@ -2,7 +2,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Text;
 
-namespace MonitorDimmer.Core.Rgb;
+namespace Shadeplay.Core.Rgb;
 
 /// <summary>
 /// Loads a saved profile in OpenRGB through its SDK server (OpenRGB → SDK Server → Start).
@@ -25,7 +25,7 @@ internal static class OpenRgbClient
             await tcp.ConnectAsync("127.0.0.1", port, cts.Token);
             var stream = tcp.GetStream();
 
-            await SendAsync(stream, SetClientName, Encoding.ASCII.GetBytes("Monitor Dimmer\0"));
+            await SendAsync(stream, SetClientName, Encoding.ASCII.GetBytes("Shadeplay\0"));
             await SendAsync(stream, RequestProtocolVersion, BitConverter.GetBytes(ClientProtocolVersion));
             // Reply: 16-byte header + server version
             var reply = new byte[20];

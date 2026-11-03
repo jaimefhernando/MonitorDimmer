@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace MonitorDimmer.Interop;
+namespace Shadeplay.Interop;
 
 [StructLayout(LayoutKind.Sequential)]
 public struct RECT

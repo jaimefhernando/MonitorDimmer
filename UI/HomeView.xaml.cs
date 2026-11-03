@@ -3,10 +3,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
-using MonitorDimmer.Core;
-using MonitorDimmer.UI.Controls;
+using Shadeplay.Core;
+using Shadeplay.UI.Controls;
 
-namespace MonitorDimmer.UI;
+namespace Shadeplay.UI;
 
 /// <summary>What is happening right now, the main switches and this week's play time.</summary>
 public partial class HomeView : UserControl

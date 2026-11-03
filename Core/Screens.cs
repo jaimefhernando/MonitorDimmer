@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
-using MonitorDimmer.Interop;
+using Shadeplay.Interop;
 
-namespace MonitorDimmer.Core;
+namespace Shadeplay.Core;
 
 /// <param name="Id">Stable id used to key per-monitor settings.</param>
 /// <param name="Number">The number Windows shows in Display settings.</param>

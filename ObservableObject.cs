@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace MonitorDimmer;
+namespace Shadeplay;
 
 public abstract class ObservableObject : INotifyPropertyChanged
 {

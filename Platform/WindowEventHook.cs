@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace MonitorDimmer.Platform;
+namespace Shadeplay.Platform;
 
 /// <summary>
 /// Tells the app when top-level windows change, so dimming reacts right away instead of waiting

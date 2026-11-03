@@ -1,11 +1,11 @@
 using System.IO;
 using System.Windows;
-using MonitorDimmer.Core;
-using MonitorDimmer.Core.Rgb;
-using MonitorDimmer.Platform;
-using MonitorDimmer.UI.Controls;
+using Shadeplay.Core;
+using Shadeplay.Core.Rgb;
+using Shadeplay.Platform;
+using Shadeplay.UI.Controls;
 
-namespace MonitorDimmer.UI;
+namespace Shadeplay.UI;
 
 /// <summary>
 /// First-run screen: shows what was found on this PC and suggests settings to match.

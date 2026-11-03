@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
-using MonitorDimmer.Interop;
+using Shadeplay.Interop;
 
-namespace MonitorDimmer.Platform;
+namespace Shadeplay.Platform;
 
 /// <summary>
 /// Keeps the cursor on the game's monitor so a stray movement can't click another screen and

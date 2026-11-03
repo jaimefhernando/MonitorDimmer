@@ -1,4 +1,4 @@
-# Builds a release: the installer (MonitorDimmer-win-Setup.exe), a portable zip and the update
+# Builds a release: the installer (Shadeplay-win-Setup.exe), a portable zip and the update
 # packages, all in releases\. Packages from earlier versions in that folder are used to make
 # small delta updates, so keep the folder between releases.
 #
@@ -21,18 +21,18 @@ if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
 Push-Location $root
 try {
     # Not single-file: separate files let updates download only what changed
-    dotnet publish (Join-Path $root 'MonitorDimmer.csproj') -c Release -r win-x64 --self-contained `
+    dotnet publish (Join-Path $root 'Shadeplay.csproj') -c Release -r win-x64 --self-contained `
         -p:Version=$Version -p:DebugType=None -o $publishDir -nologo
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 
     dotnet tool restore | Out-Null
     dotnet vpk pack `
-        --packId MonitorDimmer `
+        --packId Shadeplay `
         --packVersion $Version `
-        --packTitle 'Monitor Dimmer' `
+        --packTitle 'Shadeplay' `
         --runtime win-x64 `
         --packDir $publishDir `
-        --mainExe MonitorDimmer.exe `
+        --mainExe Shadeplay.exe `
         --icon (Join-Path $root 'assets\app.ico') `
         --outputDir $releases
     if ($LASTEXITCODE -ne 0) { throw "vpk pack failed" }
@@ -44,7 +44,7 @@ try {
             --repoUrl $repoUrl `
             --token $token `
             --publish `
-            --releaseName "Monitor Dimmer $Version" `
+            --releaseName "Shadeplay $Version" `
             --tag "v$Version" `
             --outputDir $releases
         if ($LASTEXITCODE -ne 0) { throw "Uploading the release failed" }

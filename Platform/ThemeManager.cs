@@ -1,9 +1,9 @@
 using System.Windows;
 using System.Windows.Interop;
 using Microsoft.Win32;
-using MonitorDimmer.Interop;
+using Shadeplay.Interop;
 
-namespace MonitorDimmer.Platform;
+namespace Shadeplay.Platform;
 
 /// <summary>Switches the light/dark palette, including window title bars and the tray menu.</summary>
 internal static class ThemeManager

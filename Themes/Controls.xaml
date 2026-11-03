@@ -1,6 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:c="clr-namespace:MonitorDimmer.UI.Controls">
+                    xmlns:c="clr-namespace:Shadeplay.UI.Controls">
     <!-- Every color comes from Dark.xaml / Light.xaml through DynamicResource, so the theme
          can switch while the app runs. Shapes: square, with 45° cut corners on what matters. -->
 

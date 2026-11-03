@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 
-namespace MonitorDimmer.UI.Controls;
+namespace Shadeplay.UI.Controls;
 
 /// <summary>
 /// Letter-spaced labels ("NOW DIMMING FOR"). WPF has no letter-spacing, so a hair space goes

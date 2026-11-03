@@ -1,12 +1,12 @@
 using Microsoft.Win32;
 
-namespace MonitorDimmer.Platform;
+namespace Shadeplay.Platform;
 
 /// <summary>"Start with Windows" through the current user's Run key.</summary>
 internal static class StartupManager
 {
     const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    const string ValueName = "MonitorDimmer";
+    const string ValueName = "Shadeplay";
 
     public static void Apply(bool enabled)
     {
@@ -14,6 +14,7 @@ internal static class StartupManager
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
             if (key == null) return;
+            key.DeleteValue("MonitorDimmer", throwOnMissingValue: false);
             if (enabled)
                 key.SetValue(ValueName, $"\"{Environment.ProcessPath}\" --tray");
             else

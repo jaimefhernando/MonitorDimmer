@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace MonitorDimmer.Core.Rgb;
+namespace Shadeplay.Core.Rgb;
 
 /// <summary>Changes RGB lighting while dimming and gives it back afterwards.</summary>
 internal sealed class RgbLighting : IDisposable

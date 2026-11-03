@@ -1,9 +1,9 @@
-<Window x:Class="MonitorDimmer.UI.MainWindow"
+<Window x:Class="Shadeplay.UI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:ui="clr-namespace:MonitorDimmer.UI"
-        xmlns:c="clr-namespace:MonitorDimmer.UI.Controls"
-        Title="Monitor Dimmer" Width="1180" Height="800" MinWidth="1000" MinHeight="640"
+        xmlns:ui="clr-namespace:Shadeplay.UI"
+        xmlns:c="clr-namespace:Shadeplay.UI.Controls"
+        Title="Shadeplay" Width="1180" Height="800" MinWidth="1000" MinHeight="640"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource WindowBg}" FontFamily="{DynamicResource AppFont}" FontSize="14"
         Foreground="{DynamicResource TextMain}">
@@ -651,7 +651,7 @@
                                 <Button Content="Import settings…" Click="ImportSettings_Click" Margin="0,0,8,8" />
                                 <Button Content="Show welcome screen" Click="ShowWelcome_Click" Margin="0,0,8,8" />
                                 <Button Content="Open log folder" Click="OpenLog_Click" Margin="0,0,8,8" />
-                                <Button Content="Exit Monitor Dimmer" Style="{StaticResource GhostButton}" Click="Exit_Click" Margin="0,0,8,8" />
+                                <Button Content="Exit Shadeplay" Style="{StaticResource GhostButton}" Click="Exit_Click" Margin="0,0,8,8" />
                             </WrapPanel>
                         </StackPanel>
                     </Border>

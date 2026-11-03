@@ -1,6 +1,6 @@
-using MonitorDimmer.Core.Rgb;
+using Shadeplay.Core.Rgb;
 
-namespace MonitorDimmer.Core;
+namespace Shadeplay.Core;
 
 /// <summary>
 /// What one dimming session does: the defaults with the game's profile laid over them.

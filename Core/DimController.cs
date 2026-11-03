@@ -1,8 +1,8 @@
 using System.Windows.Threading;
-using MonitorDimmer.Interop;
-using MonitorDimmer.Platform;
+using Shadeplay.Interop;
+using Shadeplay.Platform;
 
-namespace MonitorDimmer.Core;
+namespace Shadeplay.Core;
 
 public enum MonitorDimKind { Normal, Game, Dimmed, Idle, Night }
 

@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Windows.Data;
 
-namespace MonitorDimmer.UI.Controls;
+namespace Shadeplay.UI.Controls;
 
 /// <summary>
 /// Binds a segmented RadioButton to one value of an enum setting:

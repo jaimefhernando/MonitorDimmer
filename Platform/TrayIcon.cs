@@ -1,8 +1,8 @@
 using System.Drawing;
 using System.Windows.Forms;
-using MonitorDimmer.Core;
+using Shadeplay.Core;
 
-namespace MonitorDimmer.Platform;
+namespace Shadeplay.Platform;
 
 internal sealed class TrayIcon : IDisposable
 {
@@ -31,7 +31,7 @@ internal sealed class TrayIcon : IDisposable
             new ToolStripMenuItem("Until I resume", null, (_, _) => controller.PauseFor(null)),
         });
         resume = new ToolStripMenuItem("Resume", null, (_, _) => controller.Resume());
-        var settings = new ToolStripMenuItem("Open Monitor Dimmer", null, (_, _) => openSettings()) { Font = BoldMenuFont() };
+        var settings = new ToolStripMenuItem("Open Shadeplay", null, (_, _) => openSettings()) { Font = BoldMenuFont() };
         // What is happening right now, as in the app's Home page
         header = new ToolStripLabel { Font = BoldMenuFont(), Padding = new Padding(4, 6, 4, 2) };
         headerDetail = new ToolStripLabel { Padding = new Padding(4, 0, 4, 6) };
@@ -83,12 +83,12 @@ internal sealed class TrayIcon : IDisposable
         }
         else
         {
-            header.Text = controller.ManualActive ? "Dimmed by hand" : paused ? "Paused" : "Monitor Dimmer";
+            header.Text = controller.ManualActive ? "Dimmed by hand" : paused ? "Paused" : "Shadeplay";
             headerDetail.Text = controller.ManualActive || paused ? controller.Status : "Waiting for a game";
         }
         header.ForeColor = controller.IsDimming ? DarkMenuColors.Accent : MenuText;
         headerDetail.ForeColor = MutedText;
-        string text = "Monitor Dimmer: " + controller.Status;
+        string text = "Shadeplay: " + controller.Status;
         icon.Text = text.Length > 63 ? text[..62] + "…" : text;
     }
 

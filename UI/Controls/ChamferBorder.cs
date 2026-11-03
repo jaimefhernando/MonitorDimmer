@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace MonitorDimmer.UI.Controls;
+namespace Shadeplay.UI.Controls;
 
 /// <summary>
 /// A border with the top-left and bottom-right corners cut at 45°, the app's signature shape.

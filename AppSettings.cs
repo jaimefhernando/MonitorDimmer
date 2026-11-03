@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace MonitorDimmer;
+namespace Shadeplay;
 
 public enum DimMode
 {
@@ -57,8 +57,20 @@ public sealed class AppSettings : ObservableObject
 {
     public const uint ModAlt = 0x1, ModControl = 0x2, ModShift = 0x4, ModWin = 0x8;
 
-    public static string Folder { get; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MonitorDimmer");
+    public static string Folder { get; } = ResolveFolder();
+
+    static string ResolveFolder()
+    {
+        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string folder = Path.Combine(appData, "Shadeplay");
+        string old = Path.Combine(appData, "MonitorDimmer");
+        try
+        {
+            if (!Directory.Exists(folder) && Directory.Exists(old)) Directory.Move(old, folder);
+        }
+        catch { }
+        return folder;
+    }
 
     public static string FilePath => Path.Combine(Folder, "settings.json");
 
@@ -69,7 +81,7 @@ public sealed class AppSettings : ObservableObject
         {
             string text = File.ReadAllText(path);
             if (!text.TrimStart().StartsWith('{') || !text.Contains("\"WatchedApps\""))
-                return "This doesn't look like a Monitor Dimmer settings file.";
+                return "This doesn't look like a Shadeplay settings file.";
             return JsonSerializer.Deserialize<AppSettings>(text, Json) == null ? "The file is empty." : null;
         }
         catch (Exception ex)

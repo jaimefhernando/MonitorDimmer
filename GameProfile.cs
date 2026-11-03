@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-namespace MonitorDimmer;
+namespace Shadeplay;
 
 /// <summary>How the other monitors are darkened.</summary>
 public enum DimMethod

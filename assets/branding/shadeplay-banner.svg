@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 800" width="1920" height="800">
+  <defs>
+    <pattern id="weave" width="6" height="6" patternUnits="userSpaceOnUse">
+      <rect width="6" height="6" fill="#16171a"/>
+      <rect width="3" height="3" fill="#1b1c20"/>
+      <rect x="3" y="3" width="3" height="3" fill="#1b1c20"/>
+    </pattern>
+    <radialGradient id="vignette" cx="50%" cy="48%" r="70%">
+      <stop offset="0.25" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.8"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ff9a00" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ff9a00" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="screen" cx="45%" cy="50%" r="65%">
+      <stop offset="0" stop-color="#ffe9b8"/>
+      <stop offset="0.45" stop-color="#ffc247"/>
+      <stop offset="1" stop-color="#f59a0c"/>
+    </radialGradient>
+    <linearGradient id="arc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b8821f" stop-opacity="0"/>
+      <stop offset="0.35" stop-color="#ffd37a"/>
+      <stop offset="0.6" stop-color="#ffe9b8"/>
+      <stop offset="1" stop-color="#b8821f" stop-opacity="0.1"/>
+    </linearGradient>
+    <linearGradient id="amberText" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb52e"/>
+      <stop offset="1" stop-color="#f58f00"/>
+    </linearGradient>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="9"/></filter>
+    <filter id="softer" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="22"/></filter>
+    <filter id="tiny" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2"/></filter>
+  </defs>
+
+  <rect width="1920" height="800" fill="url(#weave)"/>
+  <ellipse cx="760" cy="410" rx="520" ry="300" fill="url(#halo)"/>
+  <rect width="1920" height="800" fill="url(#vignette)"/>
+
+  <g id="hud" fill="none" stroke="#b9791a" stroke-opacity="0.45" stroke-width="1.5" font-family="Consolas, 'Courier New', monospace">
+    <path d="M60 300V70H300" stroke-opacity="0.5"/>
+    <path d="M1860 500V730H1620" stroke-opacity="0.5"/>
+    <path d="M60 52L92 52L60 84Z" fill="#ff9a00" stroke="none"/>
+    <path d="M1860 748L1828 748L1860 716Z" fill="#ff9a00" stroke="none"/>
+
+    <g transform="translate(170 150)"><circle r="46"/><circle r="26" stroke-opacity="0.35"/><circle r="3" fill="#b9791a"/>
+      <path d="M-70 0H-32M32 0H70M0 -70V-32M0 32V70"/></g>
+    <g transform="translate(1760 330)"><circle r="46"/><circle r="26" stroke-opacity="0.35"/><circle r="3" fill="#b9791a"/>
+      <path d="M-70 0H-32M32 0H70M0 -70V-32M0 32V70"/></g>
+    <g transform="translate(290 1100)"></g>
+    <g transform="translate(1450 650)"><circle r="46"/><circle r="26" stroke-opacity="0.35"/><circle r="3" fill="#b9791a"/>
+      <path d="M-70 0H-32M32 0H70M0 -70V-32M0 32V70"/></g>
+    <g transform="translate(1730 700)"><circle r="56"/><circle r="32" stroke-opacity="0.35"/><circle r="7" fill="#b9791a" stroke="none"/>
+      <path d="M-86 0H-40M40 0H86M0 -86V-40M0 40V86"/></g>
+
+    <g stroke-opacity="0.25" stroke-width="1">
+      <path d="M1700 60H1860V200H1700Z"/>
+      <path d="M1700 94H1860M1700 128H1860M1700 162H1860M1740 60V200M1780 60V200M1820 60V200"/>
+      <path d="M60 560H200V730H60Z"/>
+      <path d="M60 594H200M60 628H200M60 662H200M60 696H200M95 560V730M130 560V730M165 560V730"/>
+      <path d="M1260 90H1470V190H1260Z"/>
+      <path d="M1260 122H1470M1260 155H1470M1312 90V190M1365 90V190M1417 90V190"/>
+    </g>
+    <path d="M60 400H92M28 400H60M1828 400H1892M1860 368V432" stroke-opacity="0.3"/>
+    <path d="M60 368V432" stroke-opacity="0.3"/>
+
+    <g fill="#8b8f98" fill-opacity="0.65" stroke="none" font-size="18" letter-spacing="2">
+      <text x="330" y="62">v0.6.0</text>
+      <text x="230" y="548">v0.6.0</text>
+    </g>
+    <text x="960" y="748" fill="#8b8f98" fill-opacity="0.55" stroke="none" font-size="19" letter-spacing="5" text-anchor="middle">REBRANDING</text>
+  </g>
+
+  <g id="brand" transform="translate(24 -230) scale(1.8)">
+    <ellipse cx="205" cy="350" rx="150" ry="120" fill="#ff9a00" opacity="0.22" filter="url(#softer)"/>
+
+    <g id="back-monitor">
+      <rect x="203" y="276" width="184" height="134" rx="12" fill="#2b2e35" opacity="0.55"/>
+      <rect x="203" y="276" width="184" height="134" rx="12" fill="none" stroke="#7d828d" stroke-opacity="0.45" stroke-width="2"/>
+      <rect x="213" y="286" width="164" height="114" rx="6" fill="#8b909b" opacity="0.18"/>
+      <rect x="296" y="410" width="22" height="9" fill="#2b2e35" opacity="0.6"/>
+    </g>
+
+    <g id="crescent">
+      <path d="M165 235 A178 178 0 0 1 385 495 A182 182 0 0 0 165 235 Z" fill="#ffc247" opacity="0.55" filter="url(#tiny)"/>
+      <path d="M165 235 A178 178 0 0 1 385 495 A182 182 0 0 0 165 235 Z" fill="url(#arc)"/>
+    </g>
+
+    <g id="front-monitor">
+      <rect x="112" y="335" width="190" height="124" rx="16" fill="#ff9a00" opacity="0.75" filter="url(#soft)"/>
+      <rect x="112" y="335" width="190" height="124" rx="16" fill="url(#screen)"/>
+      <path d="M165 474H249A6 6 0 0 1 244 487H170A6 6 0 0 1 165 474Z" fill="#ffb02e"/>
+      <path d="M165 474H249A6 6 0 0 1 244 487H170A6 6 0 0 1 165 474Z" fill="#ff9a00" opacity="0.5" filter="url(#soft)"/>
+    </g>
+
+    <g id="wordmark" font-family="Montserrat, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="78" letter-spacing="-1">
+      <text x="468" y="408" fill="#ff9a00" opacity="0.4" filter="url(#soft)"><tspan fill="none">SHADE</tspan><tspan>PLAY</tspan></text>
+      <text x="468" y="408"><tspan fill="#ffffff">SHADE</tspan><tspan fill="url(#amberText)">PLAY</tspan></text>
+    </g>
+  </g>
+</svg>

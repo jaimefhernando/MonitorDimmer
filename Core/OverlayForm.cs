@@ -1,8 +1,8 @@
 using System.Drawing;
 using System.Windows.Forms;
-using MonitorDimmer.Interop;
+using Shadeplay.Interop;
 
-namespace MonitorDimmer.Core;
+namespace Shadeplay.Core;
 
 /// <summary>
 /// Black, click-through, always-on-top window covering one monitor. Its opacity is the dim
@@ -35,7 +35,7 @@ internal sealed class OverlayForm : Form
         TopMost = true;
         Opacity = 0;
         Bounds = new Rectangle(bounds.Left, bounds.Top, bounds.Width, bounds.Height);
-        Text = "Monitor Dimmer overlay";
+        Text = "Shadeplay overlay";
         fadeTimer.Tick += (_, _) => StepFade();
     }
 

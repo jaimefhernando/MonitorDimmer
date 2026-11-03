@@ -1,6 +1,6 @@
-using MonitorDimmer.Core;
+using Shadeplay.Core;
 
-namespace MonitorDimmer.Platform;
+namespace Shadeplay.Platform;
 
 /// <summary>Decides when to notify, so alt-tabbing in and out of a game doesn't flood you.</summary>
 internal sealed class Notifications
@@ -48,6 +48,6 @@ internal sealed class Notifications
         if (announcedUpdate == updater.Status) return;
         announcedUpdate = updater.Status;
         System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-            tray.Notify("Monitor Dimmer update ready", updater.Status)));
+            tray.Notify("Shadeplay update ready", updater.Status)));
     }
 }

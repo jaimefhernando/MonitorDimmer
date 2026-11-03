@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
-namespace MonitorDimmer.Core;
+namespace Shadeplay.Core;
 
 public sealed record DetectedGame(string Name, string Source);
 

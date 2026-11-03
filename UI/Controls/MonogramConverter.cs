@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Windows.Data;
 
-namespace MonitorDimmer.UI.Controls;
+namespace Shadeplay.UI.Controls;
 
 /// <summary>Two letters standing in for a game's cover: "Elden Ring" → "ER", "Among Us" → "AU".</summary>
 public sealed class MonogramConverter : IValueConverter

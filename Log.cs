@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace MonitorDimmer;
+namespace Shadeplay;
 
 internal static class Log
 {

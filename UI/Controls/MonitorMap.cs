@@ -1,10 +1,10 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
-using MonitorDimmer.Interop;
-using MonitorDimmer.Platform;
+using Shadeplay.Interop;
+using Shadeplay.Platform;
 
-namespace MonitorDimmer.UI.Controls;
+namespace Shadeplay.UI.Controls;
 
 public enum MonitorTileState { Normal, Game, Dimmed, Selected }
 

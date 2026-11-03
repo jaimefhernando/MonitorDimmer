@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
-using MonitorDimmer.Core;
+using Shadeplay.Core;
 
-namespace MonitorDimmer.UI;
+namespace Shadeplay.UI;
 
 public partial class StatsView : UserControl
 {

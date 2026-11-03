@@ -3,7 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
-namespace MonitorDimmer.Core;
+namespace Shadeplay.Core;
 
 /// <summary>
 /// Lowers and restores a monitor's real backlight over DDC/CI. Monitor commands take up to

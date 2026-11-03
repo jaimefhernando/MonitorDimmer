@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace MonitorDimmer.Core;
+namespace Shadeplay.Core;
 
 /// <summary>Shows each monitor's number and name on that monitor for a few seconds.</summary>
 internal sealed class IdentifyForm : Form

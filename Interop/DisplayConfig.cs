@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace MonitorDimmer.Interop;
+namespace Shadeplay.Interop;
 
 /// <summary>
 /// Reads the monitor's own name ("LG ULTRAGEAR") and a device path that stays the same

@@ -1,11 +1,13 @@
-# Monitor Dimmer
+# Shadeplay
+
+![Shadeplay](assets/branding/shadeplay-banner.png)
 
 Tray app for multi-monitor setups. When a game or video player goes fullscreen, every other
 monitor is dimmed with a black, click-through overlay; when it closes, they fade back.
 
 Successor to the `AutoDimmer.ahk` / `OverlayDimmer.ahk` AutoHotkey scripts; no AutoHotkey needed.
 
-**Download:** `MonitorDimmer-win-Setup.exe` from the
+**Download:** `Shadeplay-win-Setup.exe` from the
 [latest release](https://github.com/jaimefhernando/MonitorDimmer/releases/latest). It installs for
 your user only (no admin rights) and keeps itself up to date. Windows 10 or 11, 64-bit.
 
@@ -74,9 +76,9 @@ local .NET tool of this repository (`.config/dotnet-tools.json`).
 builds the release and publishes it on GitHub (using the `gh` CLI login); without `-Publish` it
 only builds. Either way it writes to `releases\`:
 
-- `MonitorDimmer-win-Setup.exe`: the installer. Per user, no admin rights; Start menu and
+- `Shadeplay-win-Setup.exe`: the installer. Per user, no admin rights; Start menu and
   desktop shortcuts and an entry in Windows' installed apps.
-- `MonitorDimmer-win-Portable.zip`: runs without installing.
+- `Shadeplay-win-Portable.zip`: runs without installing.
 - `*-full.nupkg`, `*-delta.nupkg`, `releases.win.json`: what installed copies download to update.
   Keep the folder between releases; deltas are made against the previous version.
 
@@ -91,7 +93,7 @@ The installer is not code-signed, so Windows SmartScreen warns the first time it
 
 ## Files
 
-Settings and a small troubleshooting log live in `%AppData%\MonitorDimmer\`.
+Settings and a small troubleshooting log live in `%AppData%\Shadeplay\`.
 
 | Folder | Contents |
 | --- | --- |

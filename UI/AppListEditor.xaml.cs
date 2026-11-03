@@ -3,9 +3,9 @@ using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using MonitorDimmer.Core;
+using Shadeplay.Core;
 
-namespace MonitorDimmer.UI;
+namespace Shadeplay.UI;
 
 /// <summary>Editable list of program names (vlc.exe, discord.exe...).</summary>
 public partial class AppListEditor : UserControl
