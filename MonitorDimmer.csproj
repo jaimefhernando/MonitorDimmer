@@ -12,6 +12,7 @@
     <AssemblyName>MonitorDimmer</AssemblyName>
     <RootNamespace>MonitorDimmer</RootNamespace>
     <Product>Monitor Dimmer</Product>
+    <Copyright>Copyright (c) 2026 jaimefhernando. MIT License.</Copyright>
     <!-- scripts\release.ps1 overrides this with -p:Version -->
     <Version>0.2.0</Version>
     <ApplicationIcon>assets\app.ico</ApplicationIcon>

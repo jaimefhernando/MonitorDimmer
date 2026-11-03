@@ -87,3 +87,8 @@ Settings and a small troubleshooting log live in `%AppData%\MonitorDimmer\`.
 | `Platform/` | Tray icon, global shortcut, startup entry, theme, mouse lock, updater |
 | `UI/` | Settings window, profiles, stats, app list editor, running-app picker |
 | `scripts/` | Release and icon scripts |
+
+## License
+
+[MIT](LICENSE): free to use, change and share, including commercially, as long as the copyright
+notice stays with it. No warranty.
