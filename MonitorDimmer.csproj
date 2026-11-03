@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- WinForms is used only for the tray icon and the overlay windows -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>MonitorDimmer</AssemblyName>
+    <RootNamespace>MonitorDimmer</RootNamespace>
+    <Product>Monitor Dimmer</Product>
+    <!-- scripts\release.ps1 overrides this with -p:Version -->
+    <Version>0.2.0</Version>
+    <ApplicationIcon>assets\app.ico</ApplicationIcon>
+    <!-- Velopack must run before WPF starts, so Main lives in Program.cs -->
+    <StartupObject>MonitorDimmer.Program</StartupObject>
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Keep WPF and WinForms types from colliding (Application, Color, Point...) -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Velopack" Version="1.2.161" />
+  </ItemGroup>
+
+</Project>
