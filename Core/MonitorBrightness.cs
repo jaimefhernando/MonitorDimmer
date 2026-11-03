@@ -97,7 +97,7 @@ public sealed class MonitorBrightness : IDisposable
                     SaveRestoreFile();
                 }
                 uint target = (uint)Math.Round(min + (original - min) * (1 - strength / 100.0));
-                if (target != current && SetMonitorBrightness(h, target))
+                if (target != current && Ease(h, current, target))
                     Log.Write($"Brightness: Display {m.Number} from {original} to {target}");
                 return (int?)target;
             });
@@ -144,7 +144,12 @@ public sealed class MonitorBrightness : IDisposable
     void RestoreNow(string id, IntPtr hMonitor, int number)
     {
         if (!originals.TryGetValue(id, out uint original)) return;
-        bool ok = WithPhysical(hMonitor, h => SetMonitorBrightness(h, original) ? (int?)1 : null) != null;
+        bool ok = WithPhysical(hMonitor, h =>
+        {
+            // Fade back from where it is; if it can't be read, go straight to the saved level
+            bool done = TryRead(h, out _, out uint current, out _) ? Ease(h, current, original) : SetThrottled(h, original);
+            return done ? (int?)1 : null;
+        }) != null;
         if (ok)
         {
             originals.Remove(id);
@@ -157,13 +162,49 @@ public sealed class MonitorBrightness : IDisposable
         }
     }
 
+    // Monitor firmware handles DDC/CI slowly; commands closer together than this can be
+    // dropped or make the monitor stop answering until it is switched off and on
+    static readonly TimeSpan MinCommandGap = TimeSpan.FromMilliseconds(100);
+    const int FadeSteps = 4;
+    DateTime lastCommand = DateTime.MinValue;
+
+    /// <summary>
+    /// Moves brightness in a few steps (ease-out: big change first, small at the end) instead of
+    /// one jump, at least <see cref="MinCommandGap"/> apart. True when the final level was accepted.
+    /// </summary>
+    bool Ease(IntPtr h, uint from, uint to)
+    {
+        if (from == to) return true;
+        bool ok = true;
+        for (int i = 1; i <= FadeSteps; i++)
+        {
+            double t = (double)i / FadeSteps;
+            double eased = 1 - (1 - t) * (1 - t);
+            uint level = (uint)Math.Round(from + ((double)to - from) * eased);
+            ok = SetThrottled(h, level);
+        }
+        return ok;
+    }
+
+    bool SetThrottled(IntPtr h, uint level)
+    {
+        var wait = lastCommand + MinCommandGap - DateTime.UtcNow;
+        if (wait > TimeSpan.Zero) Thread.Sleep(wait);
+        bool ok = SetMonitorBrightness(h, level);
+        lastCommand = DateTime.UtcNow;
+        return ok;
+    }
+
     /// <summary>Some monitors miss the first DDC/CI request; ask up to three times.</summary>
-    static bool TryRead(IntPtr h, out uint min, out uint current, out uint max)
+    bool TryRead(IntPtr h, out uint min, out uint current, out uint max)
     {
         for (int i = 0; i < 3; i++)
         {
-            if (GetMonitorBrightness(h, out min, out current, out max) && max > min) return true;
-            Thread.Sleep(60);
+            var wait = lastCommand + MinCommandGap - DateTime.UtcNow;
+            if (wait > TimeSpan.Zero) Thread.Sleep(wait);
+            bool ok = GetMonitorBrightness(h, out min, out current, out max);
+            lastCommand = DateTime.UtcNow;
+            if (ok && max > min) return true;
         }
         min = current = max = 0;
         return false;

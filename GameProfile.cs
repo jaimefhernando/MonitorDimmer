@@ -50,6 +50,8 @@ public sealed class GameProfile : ObservableObject
     bool hideRainmeter = true;
     bool highPerformancePower;
     bool closeOneDrive;
+    bool boostPriority;
+    bool closeApps = true;
 
     public GameProfile()
     {
@@ -91,4 +93,7 @@ public sealed class GameProfile : ObservableObject
     public bool HideRainmeter { get => hideRainmeter; set => Set(ref hideRainmeter, value); }
     public bool HighPerformancePower { get => highPerformancePower; set => Set(ref highPerformancePower, value); }
     public bool CloseOneDrive { get => closeOneDrive; set => Set(ref closeOneDrive, value); }
+    public bool BoostPriority { get => boostPriority; set => Set(ref boostPriority, value); }
+    /// <summary>Close the apps on the Actions tab's list.</summary>
+    public bool CloseApps { get => closeApps; set => Set(ref closeApps, value); }
 }

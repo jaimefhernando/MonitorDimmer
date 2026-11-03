@@ -23,11 +23,16 @@ internal sealed class ActionRunner : IDisposable
     string? previousPowerPlan;
     string? closedOneDrive;
     RgbLighting.Options? appliedRgb;
+    (int Pid, ProcessPriorityClass Previous)? boosted;
+    readonly List<string> closedApps = new();
 
-    public void DimStarted(SessionPlan plan)
+    /// <param name="gamePid">The process that started the session; null when dimmed by hand.</param>
+    public void DimStarted(SessionPlan plan, int? gamePid)
     {
         Enqueue(async () =>
         {
+            if (plan.BoostPriority && gamePid is int pid) Boost(pid);
+            if (plan.CloseApps.Count > 0) await CloseAppsAsync(plan.CloseApps, gamePid);
             if (plan.WallpaperEngine && FindRunning("wallpaper64", "wallpaper32") is string we && Run(we, "-control pause"))
                 pausedWallpaperEngine = we;
             if (plan.Rainmeter && FindRunning("Rainmeter") is string rm && Run(rm, "!HideFade *"))
@@ -47,8 +52,13 @@ internal sealed class ActionRunner : IDisposable
     public void DimEnded(SessionPlan plan)
     {
         string commands = plan.OnRestoreCommands;
+        bool reopen = plan.ReopenClosedApps;
         Enqueue(async () =>
         {
+            Unboost();
+            if (reopen)
+                foreach (string app in closedApps) Start(app);
+            closedApps.Clear();
             if (pausedWallpaperEngine != null) Run(pausedWallpaperEngine, "-control play");
             if (hiddenRainmeter != null) Run(hiddenRainmeter, "!ShowFade *");
             if (previousPowerPlan != null) Run("powercfg.exe", "/setactive " + previousPowerPlan);
@@ -99,6 +109,109 @@ internal sealed class ActionRunner : IDisposable
     }
 
     public static string? FindRunningWallpaperEngine() => FindRunning("wallpaper64", "wallpaper32");
+
+    /// <summary>Normal to Above normal; never touches a priority the game or the user already chose.</summary>
+    void Boost(int pid)
+    {
+        try
+        {
+            using var p = Process.GetProcessById(pid);
+            if (p.PriorityClass != ProcessPriorityClass.Normal) return;
+            p.PriorityClass = ProcessPriorityClass.AboveNormal;
+            boosted = (pid, ProcessPriorityClass.Normal);
+            Log.Write($"Priority: {p.ProcessName} raised to Above normal");
+        }
+        catch (Exception ex)
+        {
+            // Games running as administrator or with anti-cheat refuse this
+            Log.Write($"Priority: could not raise process {pid}: {ex.Message}");
+        }
+    }
+
+    void Unboost()
+    {
+        if (boosted is not var (pid, previous)) return;
+        boosted = null;
+        try
+        {
+            using var p = Process.GetProcessById(pid);
+            if (p.PriorityClass == ProcessPriorityClass.AboveNormal) p.PriorityClass = previous;
+        }
+        catch (Exception)
+        {
+            // The game has already exited
+        }
+    }
+
+    /// <summary>Asks each listed app to close, ends it if it is still running after 3 seconds.</summary>
+    async Task CloseAppsAsync(IReadOnlyList<string> names, int? gamePid)
+    {
+        // The launcher that started the game (Steam, Epic...) may be on the list; closing it
+        // could end the game or its overlay, so the game's parents are always left alone
+        var protectedIds = gamePid is int g ? Interop.Native.GetAncestorProcessIds(g) : new HashSet<int>();
+        if (gamePid is int self) protectedIds.Add(self);
+        protectedIds.Add(Environment.ProcessId);
+
+        foreach (string exe in names)
+        {
+            foreach (var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(exe)))
+            {
+                using (p)
+                {
+                    if (protectedIds.Contains(p.Id))
+                    {
+                        Log.Write($"Left {exe} running: the game was started by it");
+                        continue;
+                    }
+                    try
+                    {
+                        string path = Interop.Native.GetProcessPath((uint)p.Id);
+                        p.CloseMainWindow();
+                        if (!await WaitForExitAsync(p, TimeSpan.FromSeconds(3)))
+                        {
+                            // Launchers and updaters often live in the tray without a window to close
+                            p.Kill(); // only this process: a child of it could be something you need
+                            await WaitForExitAsync(p, TimeSpan.FromSeconds(2));
+                        }
+                        if (path.Length > 0 && !closedApps.Contains(path, StringComparer.OrdinalIgnoreCase))
+                            closedApps.Add(path);
+                        Log.Write($"Closed {exe} while playing");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Write($"Could not close {exe}: {ex.Message}");
+                    }
+                }
+            }
+        }
+    }
+
+    static async Task<bool> WaitForExitAsync(Process p, TimeSpan timeout)
+    {
+        using var cts = new CancellationTokenSource(timeout);
+        try
+        {
+            await p.WaitForExitAsync(cts.Token);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+    }
+
+    static void Start(string path)
+    {
+        try
+        {
+            using var _ = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            Log.Write($"Reopened {Path.GetFileName(path)}");
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"Could not reopen {path}: {ex.Message}");
+        }
+    }
 
     void SwitchToHighPerformance()
     {

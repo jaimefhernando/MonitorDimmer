@@ -28,9 +28,28 @@ public sealed class DimController : IDisposable
     string? manualBrightId;        // set while dimming was turned on by hand
     string? lastForegroundMonitor; // monitor of the last app window the user was in
 
+    // Idle dimming: when the mouse or the active window was last on each monitor
+    readonly DispatcherTimer activityTimer;
+    readonly Dictionary<string, DateTime> lastActive = new();
+    readonly DateTime startedAt = DateTime.Now;
+    HashSet<string> idleCandidates = new();
+    List<MonitorInfo> lastMonitors = new();
+
+    DateTime? pausedUntil;
+    bool? nightOverride;     // night mode switched on/off from the tray, until the schedule next changes
+    bool nightOverrideFrom;  // what the schedule said when it was switched
+
+    static readonly System.Drawing.Color Black = System.Drawing.Color.Black;
+    // Dark amber: over a white page at 30 % it gives a warm, dimmer tone
+    static readonly System.Drawing.Color NightTint = System.Drawing.Color.FromArgb(110, 45, 0);
+
     public DimController(AppSettings settings)
     {
         this.settings = settings;
+        // Cheap: only reads the cursor position, and runs a full update only when a monitor
+        // becomes idle or active again
+        activityTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(500) };
+        activityTimer.Tick += (_, _) => OnActivityTick();
         // Window events trigger updates right away; this regular check only catches anything
         // the events miss (a game switching display mode, a process exiting without notice...)
         timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(2) };
@@ -47,7 +66,10 @@ public sealed class DimController : IDisposable
     public event Action? StateChanged;
 
     public bool ManualActive => manualBrightId != null;
-    public bool AutoPaused { get; private set; }
+    /// <summary>Paused from the tray: no game, idle or night dimming until it ends.</summary>
+    public bool AutoPaused => pausedUntil is DateTime until && DateTime.Now < until;
+    public DateTime? PausedUntil => AutoPaused && pausedUntil != DateTime.MaxValue ? pausedUntil : null;
+    public bool NightOn { get; private set; }
     public string Status { get; private set; } = "Starting";
     public bool IsDimming => sessionKey != null;
 
@@ -63,6 +85,7 @@ public sealed class DimController : IDisposable
         windowEvents.WindowChanged += OnWindowChanged;
         Update();
         timer.Start();
+        activityTimer.Start();
     }
 
     void OnWindowChanged()
@@ -79,10 +102,64 @@ public sealed class DimController : IDisposable
         Update();
     }
 
-    public void SetAutoPaused(bool paused)
+    /// <param name="duration">Null pauses until <see cref="Resume"/>.</param>
+    public void PauseFor(TimeSpan? duration)
     {
-        AutoPaused = paused;
+        pausedUntil = duration is TimeSpan d ? DateTime.Now + d : DateTime.MaxValue;
+        Log.Write(duration is TimeSpan t ? $"Paused for {t.TotalMinutes} min" : "Paused");
         Update();
+    }
+
+    public void Resume()
+    {
+        pausedUntil = null;
+        Update();
+    }
+
+    /// <summary>Night mode on or off now; the schedule takes over again at its next start or end.</summary>
+    public void ToggleNight()
+    {
+        bool scheduled = NightScheduled(DateTime.Now);
+        bool target = !(nightOverride ?? scheduled);
+        nightOverride = target == scheduled ? null : target;
+        nightOverrideFrom = scheduled;
+        Update();
+    }
+
+    bool NightScheduled(DateTime now) => settings.NightEnabled && settings.IsNightTime(now);
+
+    bool NightNow(DateTime now)
+    {
+        bool scheduled = NightScheduled(now);
+        if (nightOverride != null && scheduled != nightOverrideFrom) nightOverride = null;
+        return nightOverride ?? scheduled;
+    }
+
+    void OnActivityTick()
+    {
+        if (!settings.IdleDimEnabled)
+        {
+            if (idleCandidates.Count > 0) Update();
+            return;
+        }
+        if (Native.GetCursorPos(out var pt))
+        {
+            IntPtr hMonitor = Native.MonitorFromPoint(pt, Native.MONITOR_DEFAULTTONEAREST);
+            var m = lastMonitors.FirstOrDefault(x => x.Handle == hMonitor);
+            if (m != null) lastActive[m.Id] = DateTime.Now;
+        }
+        if (!IdleCandidates(lastMonitors).SetEquals(idleCandidates)) Update();
+    }
+
+    /// <summary>Monitors the mouse and the active window have stayed away from long enough.</summary>
+    HashSet<string> IdleCandidates(List<MonitorInfo> monitors)
+    {
+        if (!settings.IdleDimEnabled) return new HashSet<string>();
+        var limit = DateTime.Now - TimeSpan.FromMinutes(settings.IdleMinutes);
+        return monitors
+            .Where(m => (lastActive.TryGetValue(m.Id, out var t) ? t : startedAt) < limit)
+            .Select(m => m.Id)
+            .ToHashSet();
     }
 
     /// <summary>Shows the lighting used while dimming for a few seconds.</summary>
@@ -106,10 +183,14 @@ public sealed class DimController : IDisposable
 
         var byHandle = monitors.ToDictionary(m => m.Handle);
         IntPtr foreground = TrackForeground(byHandle);
+        exclusiveFullscreen = Native.IsExclusiveFullscreenGameRunning() ? foreground : IntPtr.Zero;
         var exceptions = NormalizedSet(settings.ExceptionApps);
+        var watched = NormalizedSet(settings.WatchedApps);
+        lastMonitors = monitors;
 
         // 1. What keeps monitors bright, and which app the session is for
         var bright = new HashSet<string>();
+        var triggerIds = new HashSet<string>();
         string? key = null;
         GameProfile? profile = null;
         WindowInfo? trigger = null;
@@ -119,6 +200,7 @@ public sealed class DimController : IDisposable
         if (manualBrightId != null)
         {
             bright.Add(manualBrightId);
+            triggerIds.Add(manualBrightId);
             key = ManualSession;
             status = "Dimmed manually";
         }
@@ -128,11 +210,10 @@ public sealed class DimController : IDisposable
         }
         else if (AutoPaused)
         {
-            status = "Paused";
+            status = PausedUntil is DateTime until ? $"Paused until {until:HH:mm}" : "Paused";
         }
         else
         {
-            var watched = NormalizedSet(settings.WatchedApps);
             var triggers = new List<(WindowInfo Window, MonitorInfo Monitor)>();
             foreach (var w in windows)
             {
@@ -141,6 +222,7 @@ public sealed class DimController : IDisposable
                 if (!IsTrigger(w, monitor, watched)) continue;
                 triggers.Add((w, monitor));
                 bright.Add(monitor.Id);
+                triggerIds.Add(monitor.Id);
             }
 
             if (triggers.Count > 0)
@@ -173,17 +255,37 @@ public sealed class DimController : IDisposable
         }
         var plan = sessionPlan;
 
-        // 3. Dim every other monitor, with the overlay and/or its own brightness
+        // 3. For each monitor the first that applies: game dimming (overlay and/or its own
+        //    brightness), idle dimming, night tint
+        var now = DateTime.Now;
+        bool active = !AutoPaused;
+        NightOn = active && NightNow(now);
+
+        // A monitor showing a fullscreen window, a game, a watched app or an exception app is
+        // in use even when the mouse stays away (a video on a side screen, Discord during a game)
+        idleCandidates = IdleCandidates(monitors);
+        var idle = new HashSet<string>();
+        if (active && idleCandidates.Count > 0)
+        {
+            var inUse = new HashSet<string>();
+            foreach (var w in windows)
+            {
+                if (!byHandle.TryGetValue(w.Monitor, out var m)) continue;
+                if (IsFullscreen(w, m) || exceptions.Contains(w.ProcessName) || IsWatched(w, watched)) inUse.Add(m.Id);
+            }
+            idle = idleCandidates.Where(id => !inUse.Contains(id)).ToHashSet();
+        }
+
         var overlayIds = new HashSet<string>();
         var brightnessIds = new HashSet<string>();
-        if (plan != null)
+        if (plan != null) bright.UnionWith(plan.KeepBrightMonitorIds);
+        foreach (var monitor in monitors)
         {
-            bright.UnionWith(plan.KeepBrightMonitorIds);
-            foreach (var monitor in monitors)
-            {
-                var ms = settings.FindMonitor(monitor.Id);
-                if (bright.Contains(monitor.Id) || ms?.NeverDim == true) continue;
+            var ms = settings.FindMonitor(monitor.Id);
+            if (ms?.NeverDim == true) continue;
 
+            if (plan != null && !bright.Contains(monitor.Id))
+            {
                 int strength = ms?.UseCustomStrength == true ? ms.Strength : plan.Strength ?? settings.Strength;
                 bool ddc = plan.Method != DimMethod.Overlay && Brightness.GetSupport(monitor.Id)?.Supported == true;
                 bool overlay = plan.Method != DimMethod.Brightness || !ddc;
@@ -200,15 +302,33 @@ public sealed class DimController : IDisposable
                 if (overlay)
                 {
                     overlayIds.Add(monitor.Id);
-                    ShowOverlay(monitor, strength / 100.0, ExceptionHoles(windows, monitor, exceptions));
+                    ShowOverlay(monitor, Black, strength / 100.0, ExceptionHoles(windows, monitor, exceptions));
                 }
             }
+            else if (idle.Contains(monitor.Id))
+            {
+                overlayIds.Add(monitor.Id);
+                ShowOverlay(monitor, Black, settings.IdleStrength / 100.0, ExceptionHoles(windows, monitor, exceptions));
+            }
+            else if (NightOn && (settings.NightAllMonitors || !monitor.IsPrimary) && !triggerIds.Contains(monitor.Id))
+            {
+                overlayIds.Add(monitor.Id);
+                ShowOverlay(monitor, NightTint, settings.NightStrength / 100.0, new List<RECT>());
+            }
+        }
+
+        if (plan == null && active)
+        {
+            var extras = new List<string>();
+            if (NightOn) extras.Add("night mode on");
+            extras.AddRange(monitors.Where(m => idle.Contains(m.Id)).Select(m => $"Display {m.Number} idle"));
+            if (extras.Count > 0) status += " · " + string.Join(", ", extras);
         }
 
         // 4. Keep the cursor on the game's monitor while the fullscreen game is in focus;
         //    Alt+Tab, the Windows key or any other window taking focus frees it
         bool lockCursor = plan?.MouseLock == true && trigger != null && triggerMonitor != null
-            && trigger.Handle == foreground && trigger.IsFullscreenOn(triggerMonitor);
+            && trigger.Handle == foreground && IsFullscreen(trigger, triggerMonitor);
         mouseLock.Apply(lockCursor ? triggerMonitor!.Bounds : null);
 
         foreach (var (id, dimmed) in brightnessDimmed.ToList())
@@ -240,7 +360,7 @@ public sealed class DimController : IDisposable
     {
         sessionKey = key;
         sessionPlan = SessionPlan.Resolve(settings, profile);
-        actions.DimStarted(sessionPlan);
+        actions.DimStarted(sessionPlan, trigger?.ProcessId);
         if (trigger != null && settings.TrackSessions)
         {
             bool isGame = profile != null || GameDetector.IsGame(trigger.ExePath);
@@ -265,28 +385,38 @@ public sealed class DimController : IDisposable
         return title.Length > 0 && title.Length <= 60 ? title : w.ProcessName;
     }
 
+    // The foreground window while Windows reports an exclusive-fullscreen DirectX game
+    IntPtr exclusiveFullscreen;
+
+    /// <summary>Covers its monitor, or is the exclusive-fullscreen game Windows reports.</summary>
+    bool IsFullscreen(WindowInfo w, MonitorInfo monitor) =>
+        w.IsFullscreenOn(monitor) || (w.Handle == exclusiveFullscreen && exclusiveFullscreen != IntPtr.Zero);
+
+    bool IsWatched(WindowInfo w, HashSet<string> watched) =>
+        settings.FindProfile(w.ProcessName) != null || watched.Contains(w.ProcessName)
+        || (settings.AutoDetectGames && GameDetector.IsGame(w.ExePath));
+
     bool IsTrigger(WindowInfo w, MonitorInfo monitor, HashSet<string> watched)
     {
-        var profile = settings.FindProfile(w.ProcessName);
-        if (profile?.NeverDim == true) return false;
-        bool isWatched = profile != null || watched.Contains(w.ProcessName)
-            || (settings.AutoDetectGames && GameDetector.IsGame(w.ExePath));
+        if (settings.FindProfile(w.ProcessName)?.NeverDim == true) return false;
+        bool isWatched = IsWatched(w, watched);
         return settings.Mode switch
         {
-            DimMode.FullscreenWatched => isWatched && w.IsFullscreenOn(monitor),
-            DimMode.AnyFullscreen => w.IsFullscreenOn(monitor),
+            DimMode.FullscreenWatched => isWatched && IsFullscreen(w, monitor),
+            DimMode.AnyFullscreen => IsFullscreen(w, monitor),
             DimMode.WhileOpen => isWatched,
             _ => false,
         };
     }
 
-    void ShowOverlay(MonitorInfo monitor, double opacity, List<RECT> holes)
+    void ShowOverlay(MonitorInfo monitor, System.Drawing.Color color, double opacity, List<RECT> holes)
     {
         if (!overlays.TryGetValue(monitor.Id, out var overlay) || overlay.IsDisposed)
         {
             overlay = new OverlayForm(monitor.Bounds, settings.HideFromCapture);
             overlays[monitor.Id] = overlay;
         }
+        overlay.BackColor = color;
         overlay.FadeTo(opacity, settings.FadeMs); // shows the window on first use
         overlay.Place(monitor.Bounds);
         overlay.SetCaptureExcluded(settings.HideFromCapture);
@@ -308,7 +438,10 @@ public sealed class DimController : IDisposable
         Native.GetWindowThreadProcessId(fg, out uint pid);
         if (pid == Environment.ProcessId) return fg; // our tray menu or settings window
         if (byHandle.TryGetValue(Native.MonitorFromWindow(fg, Native.MONITOR_DEFAULTTONEAREST), out var m))
+        {
+            if (m.Id != lastForegroundMonitor) lastActive[m.Id] = DateTime.Now; // you just switched to it
             lastForegroundMonitor = m.Id;
+        }
         return fg;
     }
 
@@ -324,6 +457,7 @@ public sealed class DimController : IDisposable
         disposed = true;
         timer.Stop();
         eventDelay.Stop();
+        activityTimer.Stop();
         windowEvents?.Dispose();
         mouseLock.Dispose();
         foreach (var overlay in overlays.Values)

@@ -81,6 +81,7 @@ public partial class MainWindow : Window
         Swatches.ItemsSource = SwatchColors;
         WatchedEditor.Items = settings.WatchedApps;
         ExceptionEditor.Items = settings.ExceptionApps;
+        CloseAppsEditor.Items = settings.CloseApps;
 
         connectedMonitors = new ListCollectionView(settings.Monitors)
         {
@@ -319,6 +320,48 @@ public partial class MainWindow : Window
 
     void InstallUpdate_Click(object sender, RoutedEventArgs e) =>
         ((App)Application.Current).ExitApp(installUpdate: true);
+
+    // --- Settings backup ---
+
+    void ExportSettings_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Export settings",
+            FileName = $"Monitor Dimmer settings {DateTime.Now:yyyy-MM-dd}.json",
+            Filter = "Monitor Dimmer settings (*.json)|*.json",
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            settings.ExportTo(dialog.FileName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, "The settings could not be saved: " + ex.Message, "Export settings",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    void ImportSettings_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Import settings",
+            Filter = "Monitor Dimmer settings (*.json)|*.json",
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        if (AppSettings.CheckImport(dialog.FileName) is string problem)
+        {
+            MessageBox.Show(this, problem, "Import settings", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        var answer = MessageBox.Show(this,
+            "Replace all current settings with the ones in this file? Monitor Dimmer restarts to load them.",
+            "Import settings", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
+        if (answer == MessageBoxResult.OK) ((App)Application.Current).ImportSettingsAndRestart(dialog.FileName);
+    }
 
     // --- Buttons ---
 

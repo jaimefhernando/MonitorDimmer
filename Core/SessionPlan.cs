@@ -15,6 +15,9 @@ internal sealed record SessionPlan(
     bool Rainmeter,
     bool Power,
     bool OneDrive,
+    bool BoostPriority,
+    IReadOnlyList<string> CloseApps,
+    bool ReopenClosedApps,
     bool MouseLock,
     string OnDimCommands,
     string OnRestoreCommands)
@@ -55,6 +58,11 @@ internal sealed record SessionPlan(
             Rainmeter: actions ? p!.HideRainmeter : s.HideRainmeter,
             Power: actions ? p!.HighPerformancePower : s.HighPerformancePower,
             OneDrive: actions ? p!.CloseOneDrive : s.CloseOneDrive,
+            BoostPriority: actions ? p!.BoostPriority : s.BoostPriority,
+            CloseApps: actions && !p!.CloseApps
+                ? Array.Empty<string>()
+                : s.CloseApps.Select(WindowScanner.NormalizeExe).Where(n => n.Length > 0).ToList(),
+            ReopenClosedApps: s.ReopenClosedApps,
             MouseLock: p?.MouseLock switch
             {
                 ProfileSwitch.On => true,

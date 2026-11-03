@@ -150,6 +150,8 @@
                                 <CheckBox IsChecked="{Binding HideRainmeter}" Content="Hide Rainmeter skins" />
                                 <CheckBox IsChecked="{Binding HighPerformancePower}" Content="High performance power plan" />
                                 <CheckBox IsChecked="{Binding CloseOneDrive}" Content="Close OneDrive" />
+                                <CheckBox IsChecked="{Binding BoostPriority}" Content="Raise the game's priority" />
+                                <CheckBox IsChecked="{Binding CloseApps}" Content="Close the apps listed on the Actions tab" />
                             </StackPanel>
                         </StackPanel>
                     </Border>

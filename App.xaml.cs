@@ -132,8 +132,32 @@ public partial class App : Application
         window.Activate();
     }
 
+    /// <summary>Replaces all settings with an exported file by restarting with it.</summary>
+    public void ImportSettingsAndRestart(string file)
+    {
+        string imported = File.ReadAllText(file);
+        CleanUp();
+        // After CleanUp saved the old settings, so they don't overwrite the imported ones
+        File.WriteAllText(AppSettings.FilePath, imported);
+        Log.Write("Settings imported from " + file);
+        // Let the new instance start as the only one
+        instanceMutex?.ReleaseMutex();
+        instanceMutex?.Dispose();
+        instanceMutex = null;
+        Process.Start(new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false });
+        Shutdown();
+    }
+
     /// <param name="installUpdate">Restart straight into a downloaded update.</param>
     public void ExitApp(bool installUpdate = false)
+    {
+        CleanUp();
+        if (installUpdate) Updater.InstallAndRestart(); // exits the process
+        else Updater.InstallOnExit();                    // installs once this process is gone
+        Shutdown();
+    }
+
+    void CleanUp()
     {
         IsExiting = true;
         settings.Changed -= OnSettingChanged;
@@ -147,10 +171,6 @@ public partial class App : Application
         window?.Close();
         showSignal?.Dispose();
         Log.Write("Exited");
-
-        if (installUpdate) Updater.InstallAndRestart(); // exits the process
-        else Updater.InstallOnExit();                    // installs once this process is gone
-        Shutdown();
     }
 
     public static void OpenFolder(string path)

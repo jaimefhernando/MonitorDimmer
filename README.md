@@ -21,9 +21,17 @@ your user only (no admin rights) and keeps itself up to date. Windows 10 or 11, 
 - **Game profiles:** per game darkness, dim method, extra monitors to keep bright (e.g. Discord's),
   lighting and actions. Anything not set follows the defaults.
 - **Real brightness (DDC/CI):** turn down the monitor's own backlight instead of, or as well as, the
-  overlay. Original levels are saved first and put back even after a crash.
+  overlay, in a short eased fade with at least 100 ms between monitor commands. Original levels are
+  saved first and put back even after a crash.
 - **Mouse lock:** keeps the cursor on the fullscreen game's monitor while the game is in focus;
   never overrides a game's own cursor lock.
+- **Idle dimming:** darkens a monitor the mouse and active window have left alone for a few minutes
+  (burn-in protection), and wakes it as soon as the mouse moves onto it.
+- **Night mode:** a warm, dimmer tint on side monitors (or all) on a schedule; on/off from the tray.
+- **Game mode:** raises the game's priority and closes listed apps (launchers, updaters) while
+  playing, reopening them afterwards. The launcher that started the game is never closed.
+- **Tray:** pause for 30 min / 1 h / 2 h, night mode, dim now.
+- **Settings backup:** export and import all settings, profiles and lists.
 - **Play stats:** time per game, sessions, longest session, the last 14 days; stored locally in
   `sessions.jsonl`.
 - **Dark mode** (default), light mode or follow Windows.

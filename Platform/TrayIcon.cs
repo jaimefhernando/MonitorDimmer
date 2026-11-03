@@ -11,19 +11,30 @@ internal sealed class TrayIcon : IDisposable
     readonly DimController controller;
     readonly ToolStripMenuItem dimNow;
     readonly ToolStripMenuItem pause;
+    readonly ToolStripMenuItem resume;
+    readonly ToolStripMenuItem night;
 
     public TrayIcon(DimController controller, Action openSettings, Action exit)
     {
         this.controller = controller;
 
         dimNow = new ToolStripMenuItem("Dim other monitors now", null, (_, _) => controller.ToggleManual());
-        pause = new ToolStripMenuItem("Pause automatic dimming", null, (_, _) => controller.SetAutoPaused(!controller.AutoPaused));
+        night = new ToolStripMenuItem("Night mode", null, (_, _) => controller.ToggleNight());
+        pause = new ToolStripMenuItem("Pause");
+        pause.DropDownItems.AddRange(new ToolStripItem[]
+        {
+            new ToolStripMenuItem("For 30 minutes", null, (_, _) => controller.PauseFor(TimeSpan.FromMinutes(30))),
+            new ToolStripMenuItem("For 1 hour", null, (_, _) => controller.PauseFor(TimeSpan.FromHours(1))),
+            new ToolStripMenuItem("For 2 hours", null, (_, _) => controller.PauseFor(TimeSpan.FromHours(2))),
+            new ToolStripMenuItem("Until I resume", null, (_, _) => controller.PauseFor(null)),
+        });
+        resume = new ToolStripMenuItem("Resume", null, (_, _) => controller.Resume());
         var settings = new ToolStripMenuItem("Settings…", null, (_, _) => openSettings()) { Font = BoldMenuFont() };
 
         menu = new ContextMenuStrip();
         menu.Items.AddRange(new ToolStripItem[]
         {
-            settings, new ToolStripSeparator(), dimNow, pause, new ToolStripSeparator(),
+            settings, new ToolStripSeparator(), dimNow, night, pause, resume, new ToolStripSeparator(),
             new ToolStripMenuItem("Exit", null, (_, _) => exit()),
         });
         menu.Opening += (_, _) => Refresh();
@@ -48,7 +59,11 @@ internal sealed class TrayIcon : IDisposable
     public void Refresh()
     {
         dimNow.Checked = controller.ManualActive;
-        pause.Checked = controller.AutoPaused;
+        night.Checked = controller.NightOn;
+        bool paused = controller.AutoPaused;
+        pause.Visible = !paused;
+        resume.Visible = paused;
+        resume.Text = controller.PausedUntil is DateTime until ? $"Resume (paused until {until:HH:mm})" : "Resume";
         string text = "Monitor Dimmer: " + controller.Status;
         icon.Text = text.Length > 63 ? text[..62] + "…" : text;
     }
@@ -57,6 +72,9 @@ internal sealed class TrayIcon : IDisposable
     {
         menu.Renderer = ThemeManager.IsDark ? new DarkMenuRenderer() : new ToolStripProfessionalRenderer();
         menu.ForeColor = ThemeManager.IsDark ? DarkMenuColors.Text : SystemColors.MenuText;
+        // The Pause submenu is its own drop-down and needs the same look
+        pause.DropDown.Renderer = menu.Renderer;
+        pause.DropDown.ForeColor = menu.ForeColor;
     }
 
     static Font BoldMenuFont() =>

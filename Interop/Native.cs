@@ -102,6 +102,27 @@ internal static class Native
     [DllImport("user32.dll")]
     public static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint flags);
 
+    const int QUNS_RUNNING_D3D_FULL_SCREEN = 3;
+
+    [DllImport("shell32.dll")]
+    static extern int SHQueryUserNotificationState(out int state);
+
+    /// <summary>
+    /// Windows' own signal that an exclusive-fullscreen DirectX game is in front. It says nothing
+    /// about which monitor, so it only backs up the per-monitor bounds check.
+    /// </summary>
+    public static bool IsExclusiveFullscreenGameRunning() =>
+        SHQueryUserNotificationState(out int state) == 0 && state == QUNS_RUNNING_D3D_FULL_SCREEN;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct POINT { public int X, Y; }
+
+    [DllImport("user32.dll")]
+    public static extern bool GetCursorPos(out POINT point);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr MonitorFromPoint(POINT point, uint flags);
+
     [DllImport("user32.dll")]
     public static extern bool IsWindowVisible(IntPtr hWnd);
 
@@ -155,6 +176,56 @@ internal static class Native
 
     [DllImport("dwmapi.dll")]
     public static extern int DwmSetWindowAttribute(IntPtr hWnd, int attribute, ref int value, int size);
+
+    const uint TH32CS_SNAPPROCESS = 0x2;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct PROCESSENTRY32
+    {
+        public uint dwSize;
+        public uint cntUsage;
+        public uint th32ProcessID;
+        public IntPtr th32DefaultHeapID;
+        public uint th32ModuleID;
+        public uint cntThreads;
+        public uint th32ParentProcessID;
+        public int pcPriClassBase;
+        public uint dwFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string szExeFile;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern IntPtr CreateToolhelp32Snapshot(uint flags, uint processId);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    static extern bool Process32First(IntPtr snapshot, ref PROCESSENTRY32 entry);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    static extern bool Process32Next(IntPtr snapshot, ref PROCESSENTRY32 entry);
+
+    /// <summary>The process's parent, grandparent and so on (e.g. the launcher that started a game).</summary>
+    public static HashSet<int> GetAncestorProcessIds(int pid)
+    {
+        var parents = new Dictionary<int, int>();
+        IntPtr snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (snap == new IntPtr(-1)) return new HashSet<int>();
+        try
+        {
+            var e = new PROCESSENTRY32 { dwSize = (uint)Marshal.SizeOf<PROCESSENTRY32>() };
+            for (bool ok = Process32First(snap, ref e); ok; ok = Process32Next(snap, ref e))
+                parents[(int)e.th32ProcessID] = (int)e.th32ParentProcessID;
+        }
+        finally
+        {
+            CloseHandle(snap);
+        }
+
+        var result = new HashSet<int>();
+        // Parent ids can be reused by unrelated processes, so stop at the first loop
+        while (parents.TryGetValue(pid, out int parent) && parent != 0 && result.Add(parent))
+            pid = parent;
+        return result;
+    }
 
     /// <summary>Full exe path of a process; works for elevated games too. Empty on failure.</summary>
     public static string GetProcessPath(uint pid)

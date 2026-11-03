@@ -60,7 +60,25 @@ public sealed class AppSettings : ObservableObject
     public static string Folder { get; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MonitorDimmer");
 
-    static string FilePath => Path.Combine(Folder, "settings.json");
+    public static string FilePath => Path.Combine(Folder, "settings.json");
+
+    /// <summary>Null when <paramref name="path"/> is a readable settings file, else why not.</summary>
+    public static string? CheckImport(string path)
+    {
+        try
+        {
+            string text = File.ReadAllText(path);
+            if (!text.TrimStart().StartsWith('{') || !text.Contains("\"WatchedApps\""))
+                return "This doesn't look like a Monitor Dimmer settings file.";
+            return JsonSerializer.Deserialize<AppSettings>(text, Json) == null ? "The file is empty." : null;
+        }
+        catch (Exception ex)
+        {
+            return "The file could not be read: " + ex.Message;
+        }
+    }
+
+    public void ExportTo(string path) => File.WriteAllText(path, JsonSerializer.Serialize(this, Json));
 
     static readonly JsonSerializerOptions Json = new()
     {
@@ -108,6 +126,17 @@ public sealed class AppSettings : ObservableObject
     bool lockMouse;
     bool autoUpdate = true;
     string updateSource = "";
+    bool idleDimEnabled;
+    int idleMinutes = 5;
+    int idleStrength = 70;
+    bool nightEnabled;
+    string nightStart = "21:00";
+    string nightEnd = "07:00";
+    int nightStrength = 30;
+    bool nightAllMonitors;
+    bool boostPriority;
+    ObservableCollection<string> closeApps = new();
+    bool reopenClosedApps = true;
 
     public AppSettings()
     {
@@ -115,6 +144,7 @@ public sealed class AppSettings : ObservableObject
         Hook(exceptionApps);
         Hook(monitors);
         Hook(profiles);
+        Hook(closeApps);
         PropertyChanged += (_, e) => Changed?.Invoke(e.PropertyName ?? "");
     }
 
@@ -176,6 +206,35 @@ public sealed class AppSettings : ObservableObject
     public bool AutoUpdate { get => autoUpdate; set => Set(ref autoUpdate, value); }
     /// <summary>Where to look for updates instead of the built-in location (a URL or a folder).</summary>
     public string UpdateSource { get => updateSource; set => Set(ref updateSource, value ?? ""); }
+
+    /// <summary>Darken a monitor the mouse and active window have left alone for a while.</summary>
+    public bool IdleDimEnabled { get => idleDimEnabled; set => Set(ref idleDimEnabled, value); }
+    public int IdleMinutes { get => idleMinutes; set => Set(ref idleMinutes, Math.Clamp(value, 1, 120)); }
+    public int IdleStrength { get => idleStrength; set => Set(ref idleStrength, Math.Clamp(value, 10, 100)); }
+
+    /// <summary>Warm, dimmer tint on a schedule.</summary>
+    public bool NightEnabled { get => nightEnabled; set => Set(ref nightEnabled, value); }
+    /// <summary>"HH:mm".</summary>
+    public string NightStart { get => nightStart; set => Set(ref nightStart, value ?? "21:00"); }
+    /// <summary>"HH:mm"; earlier than the start means the next morning.</summary>
+    public string NightEnd { get => nightEnd; set => Set(ref nightEnd, value ?? "07:00"); }
+    public int NightStrength { get => nightStrength; set => Set(ref nightStrength, Math.Clamp(value, 5, 80)); }
+    /// <summary>Tint every monitor instead of only the side ones.</summary>
+    public bool NightAllMonitors { get => nightAllMonitors; set => Set(ref nightAllMonitors, value); }
+
+    /// <summary>Raise the game's process priority while playing.</summary>
+    public bool BoostPriority { get => boostPriority; set => Set(ref boostPriority, value); }
+    /// <summary>Apps closed while playing, e.g. launchers and updaters.</summary>
+    public ObservableCollection<string> CloseApps { get => closeApps; set => SetList(ref closeApps, value); }
+    public bool ReopenClosedApps { get => reopenClosedApps; set => Set(ref reopenClosedApps, value); }
+
+    /// <summary>Whether <paramref name="now"/> falls in the night mode hours.</summary>
+    public bool IsNightTime(DateTime now)
+    {
+        if (!TimeSpan.TryParse(nightStart, out var start) || !TimeSpan.TryParse(nightEnd, out var end)) return false;
+        var t = now.TimeOfDay;
+        return start <= end ? t >= start && t < end : t >= start || t < end;
+    }
 
     public GameProfile? FindProfile(string exeName)
     {
@@ -249,7 +308,8 @@ public sealed class AppSettings : ObservableObject
         HookItems(e.NewItems);
         Changed?.Invoke(sender == watchedApps ? nameof(WatchedApps)
             : sender == exceptionApps ? nameof(ExceptionApps)
-            : sender == profiles ? nameof(Profiles) : nameof(Monitors));
+            : sender == profiles ? nameof(Profiles)
+            : sender == closeApps ? nameof(CloseApps) : nameof(Monitors));
     }
 
     void OnItemChanged(object? sender, PropertyChangedEventArgs e)
