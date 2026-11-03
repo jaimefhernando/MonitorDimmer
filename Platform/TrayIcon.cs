@@ -9,19 +9,25 @@ internal sealed class TrayIcon : IDisposable
     readonly NotifyIcon icon;
     readonly ContextMenuStrip menu;
     readonly DimController controller;
+    readonly AppSettings appSettings;
     readonly ToolStripMenuItem dimNow;
     readonly ToolStripMenuItem pause;
     readonly ToolStripMenuItem resume;
     readonly ToolStripMenuItem night;
+    readonly ToolStripMenuItem focus;
+    readonly ToolStripMenuItem isolate;
     readonly ToolStripLabel header;
     readonly ToolStripLabel headerDetail;
 
-    public TrayIcon(DimController controller, Action openSettings, Action exit)
+    public TrayIcon(DimController controller, AppSettings appSettings, Action openSettings, Action exit)
     {
         this.controller = controller;
+        this.appSettings = appSettings;
 
         dimNow = new ToolStripMenuItem("Dim other monitors now", null, (_, _) => controller.ToggleManual());
         night = new ToolStripMenuItem("Night mode", null, (_, _) => controller.ToggleNight());
+        focus = new ToolStripMenuItem("Focus on active window", null, (_, _) => appSettings.FocusEnabled = !appSettings.FocusEnabled);
+        isolate = new ToolStripMenuItem("Isolate active window", null, (_, _) => controller.ToggleIsolate());
         pause = new ToolStripMenuItem("Pause");
         pause.DropDownItems.AddRange(new ToolStripItem[]
         {
@@ -40,7 +46,7 @@ internal sealed class TrayIcon : IDisposable
         menu.Items.AddRange(new ToolStripItem[]
         {
             header, headerDetail, new ToolStripSeparator(),
-            dimNow, night, pause, resume, new ToolStripSeparator(),
+            dimNow, isolate, focus, night, pause, resume, new ToolStripSeparator(),
             settings, new ToolStripMenuItem("Exit", null, (_, _) => exit()),
         });
         menu.Opening += (_, _) => Refresh();
@@ -67,6 +73,8 @@ internal sealed class TrayIcon : IDisposable
     {
         dimNow.Checked = controller.ManualActive;
         night.Checked = controller.NightOn;
+        focus.Checked = appSettings.FocusEnabled;
+        isolate.Checked = controller.IsolateActive;
         bool paused = controller.AutoPaused;
         pause.Visible = !paused;
         resume.Visible = paused;

@@ -271,6 +271,97 @@
                             </StackPanel>
                         </Border>
                     </Grid>
+                    <Grid Margin="0,14,14,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="FOCUS" />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding FocusEnabled}">
+                                    <TextBlock Text="Focus on the active window" FontSize="18" FontWeight="Bold" />
+                                </CheckBox>
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Outside games, dims everything except the window you are working in, on every monitor. Also in the tray menu." />
+                                <StackPanel IsEnabled="{Binding FocusEnabled}">
+                                    <DockPanel Margin="0,0,0,6">
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding FocusStrength, StringFormat={}{0} %}" FontWeight="Bold" />
+                                        <TextBlock Text="Darkness" />
+                                    </DockPanel>
+                                    <Slider Minimum="10" Maximum="95" TickFrequency="5" Value="{Binding FocusStrength}" AutomationProperties.Name="Focus darkness" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="KEEP LIT" />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding MediaOverride}">
+                                    <TextBlock Text="Videos stay visible" FontSize="18" FontWeight="Bold" />
+                                </CheckBox>
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Video players (VLC, mpv, PotPlayer, Stremio...) and fullscreen videos stay lit on a dimmed monitor, while the rest of it goes dark." />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding IsolateHotkeyEnabled}" Margin="0,8,0,0">
+                                    <TextBlock Text="Isolate shortcut: Ctrl + Alt + I" FontWeight="Bold" />
+                                </CheckBox>
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Turns everything pitch-black except the window in front, lighting included. Press again to undo." />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <Grid Margin="0,14,14,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="MONITOR HARDWARE" />
+                                <TextBlock Text="Beyond brightness" FontSize="18" FontWeight="Bold" Margin="0,0,0,6" />
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Used on dimmed monitors that accept brightness commands (DDC/CI). Side screens stay readable, with less glare and fewer harsh colours. Original values come back when dimming ends." />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding DimContrastEnabled}">
+                                    <TextBlock Text="Lower contrast" FontWeight="Bold" />
+                                </CheckBox>
+                                <StackPanel IsEnabled="{Binding DimContrastEnabled}">
+                                    <DockPanel Margin="0,0,0,6">
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding DimContrast, StringFormat={}{0} %}" FontWeight="Bold" />
+                                        <TextBlock Text="Reduce by" />
+                                    </DockPanel>
+                                    <Slider Minimum="5" Maximum="70" TickFrequency="5" Value="{Binding DimContrast}" AutomationProperties.Name="Contrast reduction" />
+                                </StackPanel>
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding DimSaturationEnabled}" Margin="0,10,0,0">
+                                    <TextBlock Text="Mute colours" FontWeight="Bold" />
+                                </CheckBox>
+                                <StackPanel IsEnabled="{Binding DimSaturationEnabled}">
+                                    <DockPanel Margin="0,0,0,6">
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding DimSaturation, StringFormat={}{0} %}" FontWeight="Bold" />
+                                        <TextBlock Text="Reduce by" />
+                                    </DockPanel>
+                                    <Slider Minimum="5" Maximum="90" TickFrequency="5" Value="{Binding DimSaturation}" AutomationProperties.Name="Saturation reduction" />
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                                           Text="Not every monitor supports contrast or colour changes; unsupported ones are left alone." />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="SAFETY" />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding OsdSafe}">
+                                    <TextBlock Text="OSD-safe mode" FontSize="18" FontWeight="Bold" />
+                                </CheckBox>
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Sends monitor commands slowly and in smaller steps, so monitors that freeze or flash their menu on quick changes cope. Fades take a little longer." />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding OledProtect}" Margin="0,8,0,0">
+                                    <TextBlock Text="OLED burn-in protection" FontSize="18" FontWeight="Bold" />
+                                </CheckBox>
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Slowly drifts a faint lighter band across the black overlay on dimmed screens, so no pixel sits at the same level for hours. Barely visible." />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
                 </StackPanel>
             </ScrollViewer>
         </TabItem>

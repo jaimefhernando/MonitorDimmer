@@ -116,12 +116,13 @@ public partial class MainWindow : Window
                 MonitorDimKind.Game => "GAME",
                 MonitorDimKind.Dimmed => $"DIMMED {s.Strength} %",
                 MonitorDimKind.Idle => $"IDLE {s.Strength} %",
+                MonitorDimKind.Focus => $"FOCUS {s.Strength} %",
                 MonitorDimKind.Night => "NIGHT MODE",
                 _ => s.Monitor.IsPrimary ? "PRIMARY" : "SIDE",
             },
             $"{s.Monitor.FriendlyName} · {s.Monitor.Bounds.Width} × {s.Monitor.Bounds.Height}",
             s.Kind == MonitorDimKind.Game ? MonitorTileState.Game
-                : s.Kind is MonitorDimKind.Dimmed or MonitorDimKind.Idle ? MonitorTileState.Dimmed : MonitorTileState.Normal)).ToList();
+                : s.Kind is MonitorDimKind.Dimmed or MonitorDimKind.Idle or MonitorDimKind.Focus ? MonitorTileState.Dimmed : MonitorTileState.Normal)).ToList();
         System.Windows.Automation.AutomationProperties.SetName(MonitorsMap,
             "Monitor arrangement: " + string.Join("; ", states.Select(s => $"Display {s.Monitor.Number}, {s.Monitor.FriendlyName}")));
     }

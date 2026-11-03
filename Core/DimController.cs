@@ -4,7 +4,7 @@ using Shadeplay.Platform;
 
 namespace Shadeplay.Core;
 
-public enum MonitorDimKind { Normal, Game, Dimmed, Idle, Night }
+public enum MonitorDimKind { Normal, Game, Dimmed, Idle, Night, Focus }
 
 /// <param name="Strength">Darkness in percent while dimmed, idle or tinted.</param>
 /// <param name="UsesBrightness">Dimmed through the monitor's own backlight (DDC/CI).</param>
@@ -17,12 +17,18 @@ public sealed record MonitorState(MonitorInfo Monitor, MonitorDimKind Kind, int 
 public sealed class DimController : IDisposable
 {
     const string ManualSession = "(manual)";
+    const string IsolateSession = "(isolate)";
+    static readonly HashSet<string> MediaPlayers = new()
+    {
+        "vlc.exe", "mpv.exe", "mpc-hc.exe", "mpc-hc64.exe", "mpc-be.exe", "mpc-be64.exe", "potplayer.exe",
+        "potplayermini.exe", "potplayermini64.exe", "wmplayer.exe", "stremio.exe", "crunchyroll.exe", "kodi.exe",
+    };
 
     readonly AppSettings settings;
     readonly DispatcherTimer timer;
     readonly DispatcherTimer eventDelay;
     readonly Dictionary<string, OverlayForm> overlays = new();
-    readonly Dictionary<string, (MonitorInfo Monitor, int Strength)> brightnessDimmed = new();
+    readonly Dictionary<string, (MonitorInfo Monitor, int Strength, int Extras)> brightnessDimmed = new();
     readonly ActionRunner actions = new();
     readonly MouseLock mouseLock = new();
     WindowEventHook? windowEvents;
@@ -32,6 +38,8 @@ public sealed class DimController : IDisposable
     SessionPlan? sessionPlan;
 
     string? manualBrightId;        // set while dimming was turned on by hand
+    IntPtr isolateWindow;          // set while everything but this window is blacked out
+    IntPtr lastAppWindow;          // the last window of another app the user was in
     string? lastForegroundMonitor; // monitor of the last app window the user was in
 
     // Idle dimming: when the mouse or the active window was last on each monitor
@@ -114,6 +122,24 @@ public sealed class DimController : IDisposable
         Update();
     }
 
+    public bool IsolateActive => isolateWindow != IntPtr.Zero;
+
+    /// <summary>Blacks out everything except the window in front, or undoes it.</summary>
+    public void ToggleIsolate()
+    {
+        if (isolateWindow != IntPtr.Zero)
+        {
+            isolateWindow = IntPtr.Zero;
+        }
+        else
+        {
+            IntPtr fg = Native.GetForegroundWindow();
+            Native.GetWindowThreadProcessId(fg, out uint pid);
+            isolateWindow = fg != IntPtr.Zero && pid != Environment.ProcessId ? fg : lastAppWindow;
+        }
+        Update();
+    }
+
     /// <param name="duration">Null pauses until <see cref="Resume"/>.</param>
     public void PauseFor(TimeSpan? duration)
     {
@@ -193,6 +219,7 @@ public sealed class DimController : IDisposable
             return;
         }
 
+        Brightness.OsdSafe = settings.OsdSafe;
         var byHandle = monitors.ToDictionary(m => m.Handle);
         IntPtr foreground = TrackForeground(byHandle);
         exclusiveFullscreen = Native.IsExclusiveFullscreenGameRunning() ? foreground : IntPtr.Zero;
@@ -209,7 +236,15 @@ public sealed class DimController : IDisposable
         MonitorInfo? triggerMonitor = null;
         string status;
 
-        if (manualBrightId != null)
+        WindowInfo? isolated = isolateWindow == IntPtr.Zero ? null : windows.FirstOrDefault(w => w.Handle == isolateWindow);
+        if (isolateWindow != IntPtr.Zero && isolated == null) isolateWindow = IntPtr.Zero;
+
+        if (isolated != null)
+        {
+            key = IsolateSession;
+            status = $"Isolated on {DisplayName(isolated, null)}";
+        }
+        else if (manualBrightId != null)
         {
             bright.Add(manualBrightId);
             triggerIds.Add(manualBrightId);
@@ -288,6 +323,11 @@ public sealed class DimController : IDisposable
             idle = idleCandidates.Where(id => !inUse.Contains(id)).ToHashSet();
         }
 
+        var mediaPlayers = settings.MediaOverride ? MediaPlayers : new HashSet<string>();
+        WindowInfo? focused = null;
+        if (settings.FocusEnabled && plan == null && active)
+            focused = windows.FirstOrDefault(w => w.Handle == lastAppWindow);
+
         var overlayIds = new HashSet<string>();
         var brightnessIds = new HashSet<string>();
         var states = new List<MonitorState>();
@@ -302,7 +342,25 @@ public sealed class DimController : IDisposable
                 continue;
             }
 
-            if (plan != null && !bright.Contains(monitor.Id))
+            if (isolated != null)
+            {
+                bool hasWindow = isolated.Bounds.IntersectsWith(monitor.Bounds);
+                bool ddc = !hasWindow && plan!.Method != DimMethod.Overlay && Brightness.GetSupport(monitor.Id)?.Supported == true;
+                if (ddc)
+                {
+                    brightnessIds.Add(monitor.Id);
+                    if (!brightnessDimmed.TryGetValue(monitor.Id, out var current) || current.Strength != 100 || current.Extras != 0)
+                    {
+                        Brightness.Dim(monitor, 100);
+                        brightnessDimmed[monitor.Id] = (monitor, 100, 0);
+                    }
+                }
+                overlayIds.Add(monitor.Id);
+                var holes = hasWindow ? new List<RECT> { isolated.Bounds.Intersect(monitor.Bounds) } : new List<RECT>();
+                ShowOverlay(monitor, Black, 1, holes);
+                states.Add(new MonitorState(monitor, MonitorDimKind.Dimmed, 100, ddc));
+            }
+            else if (plan != null && !bright.Contains(monitor.Id))
             {
                 int strength = ms?.UseCustomStrength == true ? ms.Strength : plan.Strength ?? settings.Strength;
                 bool ddc = plan.Method != DimMethod.Overlay && Brightness.GetSupport(monitor.Id)?.Supported == true;
@@ -311,23 +369,34 @@ public sealed class DimController : IDisposable
                 if (ddc)
                 {
                     brightnessIds.Add(monitor.Id);
-                    if (!brightnessDimmed.TryGetValue(monitor.Id, out var current) || current.Strength != strength)
+                    int contrastCut = settings.DimContrastEnabled ? settings.DimContrast : 0;
+                    int satCut = settings.DimSaturationEnabled ? settings.DimSaturation : 0;
+                    int extras = contrastCut * 1000 + satCut;
+                    if (!brightnessDimmed.TryGetValue(monitor.Id, out var current) || current.Strength != strength || current.Extras != extras)
                     {
-                        Brightness.Dim(monitor, strength);
-                        brightnessDimmed[monitor.Id] = (monitor, strength);
+                        Brightness.Dim(monitor, strength, contrastCut, satCut);
+                        brightnessDimmed[monitor.Id] = (monitor, strength, extras);
                     }
                 }
                 if (overlay)
                 {
                     overlayIds.Add(monitor.Id);
-                    ShowOverlay(monitor, Black, strength / 100.0, ExceptionHoles(windows, monitor, exceptions));
+                    ShowOverlay(monitor, Black, strength / 100.0, KeepLitHoles(windows, monitor, exceptions, mediaPlayers));
                 }
                 states.Add(new MonitorState(monitor, MonitorDimKind.Dimmed, strength, ddc));
+            }
+            else if (focused != null)
+            {
+                overlayIds.Add(monitor.Id);
+                var holes = KeepLitHoles(windows, monitor, exceptions, mediaPlayers);
+                if (focused.Bounds.IntersectsWith(monitor.Bounds)) holes.Add(focused.Bounds.Intersect(monitor.Bounds));
+                ShowOverlay(monitor, Black, settings.FocusStrength / 100.0, holes);
+                states.Add(new MonitorState(monitor, MonitorDimKind.Focus, settings.FocusStrength, false));
             }
             else if (idle.Contains(monitor.Id))
             {
                 overlayIds.Add(monitor.Id);
-                ShowOverlay(monitor, Black, settings.IdleStrength / 100.0, ExceptionHoles(windows, monitor, exceptions));
+                ShowOverlay(monitor, Black, settings.IdleStrength / 100.0, KeepLitHoles(windows, monitor, exceptions, mediaPlayers));
                 states.Add(new MonitorState(monitor, MonitorDimKind.Idle, settings.IdleStrength, false));
             }
             else if (NightOn && (settings.NightAllMonitors || !monitor.IsPrimary) && !triggerIds.Contains(monitor.Id))
@@ -485,12 +554,16 @@ public sealed class DimController : IDisposable
         overlay.Place(monitor.Bounds);
         overlay.SetCaptureExcluded(settings.HideFromCapture);
         overlay.SetHoles(holes);
+        overlay.SetDrift(settings.OledProtect && color == Black);
         overlay.KeepOnTop();
     }
 
-    static List<RECT> ExceptionHoles(List<WindowInfo> windows, MonitorInfo monitor, HashSet<string> exceptions) =>
+    /// <summary>Exception apps, video players and fullscreen videos stay lit on a dimmed monitor.</summary>
+    List<RECT> KeepLitHoles(List<WindowInfo> windows, MonitorInfo monitor, HashSet<string> exceptions, HashSet<string> media) =>
         windows
-            .Where(w => exceptions.Contains(w.ProcessName) && w.Bounds.IntersectsWith(monitor.Bounds))
+            .Where(w => w.Bounds.IntersectsWith(monitor.Bounds)
+                && (exceptions.Contains(w.ProcessName) || media.Contains(w.ProcessName)
+                    || (media.Count > 0 && w.IsFullscreenOn(monitor))))
             .Select(w => w.Bounds.Intersect(monitor.Bounds))
             .ToList();
 
@@ -501,6 +574,7 @@ public sealed class DimController : IDisposable
         if (fg == IntPtr.Zero) return fg;
         Native.GetWindowThreadProcessId(fg, out uint pid);
         if (pid == Environment.ProcessId) return fg; // our tray menu or settings window
+        lastAppWindow = fg;
         if (byHandle.TryGetValue(Native.MonitorFromWindow(fg, Native.MONITOR_DEFAULTTONEAREST), out var m))
         {
             if (m.Id != lastForegroundMonitor) lastActive[m.Id] = DateTime.Now; // you just switched to it
@@ -530,7 +604,7 @@ public sealed class DimController : IDisposable
             overlay.Dispose();
         }
         overlays.Clear();
-        foreach (var (monitor, _) in brightnessDimmed.Values) Brightness.Restore(monitor);
+        foreach (var (monitor, _, _) in brightnessDimmed.Values) Brightness.Restore(monitor);
         brightnessDimmed.Clear();
         if (sessionKey != null) EndSession();
 

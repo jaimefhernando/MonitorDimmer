@@ -114,7 +114,7 @@ public partial class HomeView : UserControl
             s.Monitor.FriendlyName, s.Kind switch
             {
                 MonitorDimKind.Game => MonitorTileState.Game,
-                MonitorDimKind.Dimmed or MonitorDimKind.Idle => MonitorTileState.Dimmed,
+                MonitorDimKind.Dimmed or MonitorDimKind.Idle or MonitorDimKind.Focus => MonitorTileState.Dimmed,
                 _ => MonitorTileState.Normal,
             })).ToList();
         // The map draws its own content, so it describes itself to screen readers
@@ -131,6 +131,7 @@ public partial class HomeView : UserControl
         MonitorDimKind.Game => "GAME",
         MonitorDimKind.Dimmed => $"DIMMED {s.Strength} %",
         MonitorDimKind.Idle => $"IDLE {s.Strength} %",
+        MonitorDimKind.Focus => $"FOCUS {s.Strength} %",
         MonitorDimKind.Night => "NIGHT MODE",
         _ => "BRIGHT",
     };

@@ -18,6 +18,11 @@ internal sealed class OverlayForm : Form
     bool captureExcluded;
     string holesKey = "";
 
+    // Burn-in protection: a faint lighter band that creeps across the overlay
+    readonly System.Windows.Forms.Timer driftTimer = new() { Interval = 30_000 };
+    bool drift;
+    double driftPos;
+
     double fadeFrom, fadeTo = -1;
     DateTime fadeStart;
     int fadeMs;
@@ -37,6 +42,12 @@ internal sealed class OverlayForm : Form
         Bounds = new Rectangle(bounds.Left, bounds.Top, bounds.Width, bounds.Height);
         Text = "Shadeplay overlay";
         fadeTimer.Tick += (_, _) => StepFade();
+        driftTimer.Tick += (_, _) =>
+        {
+            driftPos = (driftPos + 0.03) % 1.4;
+            Invalidate();
+        };
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
     }
 
     protected override bool ShowWithoutActivation => true;
@@ -81,6 +92,33 @@ internal sealed class OverlayForm : Form
         bounds = monitorBounds;
         holesKey = "";
         ApplyBounds();
+    }
+
+    public void SetDrift(bool on)
+    {
+        if (on == drift) return;
+        drift = on;
+        if (on) driftTimer.Start();
+        else driftTimer.Stop();
+        Invalidate();
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        e.Graphics.Clear(BackColor);
+        if (!drift || ClientSize.Width <= 0) return;
+        int w = ClientSize.Width, band = Math.Max(1, w * 2 / 5);
+        int x = (int)(driftPos * w) - band;
+        using var brush = new System.Drawing.Drawing2D.LinearGradientBrush(
+            new Rectangle(x, 0, band, 1), Color.FromArgb(0, 40, 40, 40), Color.FromArgb(0, 40, 40, 40), 0f)
+        {
+            InterpolationColors = new System.Drawing.Drawing2D.ColorBlend(3)
+            {
+                Colors = new[] { Color.Black, Color.FromArgb(46, 46, 46), Color.Black },
+                Positions = new[] { 0f, 0.5f, 1f },
+            },
+        };
+        e.Graphics.FillRectangle(brush, new Rectangle(x, 0, band, ClientSize.Height));
     }
 
     public void SetCaptureExcluded(bool excluded)
@@ -170,6 +208,7 @@ internal sealed class OverlayForm : Form
         if (disposing)
         {
             fadeTimer.Dispose();
+            driftTimer.Dispose();
             Region?.Dispose();
         }
         base.Dispose(disposing);

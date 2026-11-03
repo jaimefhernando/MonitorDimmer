@@ -18,6 +18,7 @@ public partial class App : Application
     AppSettings settings = null!;
     DimController controller = null!;
     HotkeyManager hotkeys = null!;
+    HotkeyManager isolateHotkey = null!;
     TrayIcon tray = null!;
     MainWindow? window;
     readonly DispatcherTimer saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
@@ -60,7 +61,10 @@ public partial class App : Application
         hotkeys = new HotkeyManager();
         hotkeys.Pressed += controller.ToggleManual;
         ApplyHotkey();
-        tray = new TrayIcon(controller, ShowSettings, () => ExitApp());
+        isolateHotkey = new HotkeyManager();
+        isolateHotkey.Pressed += controller.ToggleIsolate;
+        ApplyIsolateHotkey();
+        tray = new TrayIcon(controller, settings, ShowSettings, () => ExitApp());
         StartupManager.Apply(settings.StartWithWindows);
 
         saveTimer.Tick += (_, _) =>
@@ -114,6 +118,9 @@ public partial class App : Application
             case nameof(AppSettings.HotkeyKey):
                 ApplyHotkey();
                 break;
+            case nameof(AppSettings.IsolateHotkeyEnabled):
+                ApplyIsolateHotkey();
+                break;
             case nameof(AppSettings.StartWithWindows):
                 StartupManager.Apply(settings.StartWithWindows);
                 break;
@@ -122,6 +129,13 @@ public partial class App : Application
                 break;
         }
         controller.Update();
+    }
+
+    void ApplyIsolateHotkey()
+    {
+        if (!settings.IsolateHotkeyEnabled) isolateHotkey.Unregister();
+        else if (!isolateHotkey.Register(AppSettings.ModControl | AppSettings.ModAlt, 0x49))
+            Log.Write("Ctrl+Alt+I is already used by another app");
     }
 
     void ApplyHotkey()
@@ -185,6 +199,7 @@ public partial class App : Application
         // Restores brightness, lighting, Wallpaper Engine... before any update replaces the app
         controller.Dispose();
         hotkeys.Dispose();
+        isolateHotkey.Dispose();
         tray.Dispose();
         welcome?.Close();
         window?.Close();

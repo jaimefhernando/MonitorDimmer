@@ -6,7 +6,34 @@
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource WindowBg}" Foreground="{DynamicResource TextMain}"
         FontFamily="{DynamicResource AppFont}" FontSize="14">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="32" ResizeBorderThickness="6" GlassFrameThickness="0"
+                      CornerRadius="0" UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+
+    <Border x:Name="RootBorder" BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
     <DockPanel>
+        <Grid x:Name="TitleBar" DockPanel.Dock="Top" Height="32" Background="{DynamicResource WindowBg}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <Button Style="{StaticResource TitleBarButton}" Click="Minimize_Click"
+                        ToolTip="Minimize" AutomationProperties.Name="Minimize">
+                    <Path Style="{StaticResource TitleBarIcon}" Data="M0,5.5 H10" />
+                </Button>
+                <Button x:Name="MaximizeButton" Style="{StaticResource TitleBarButton}" Click="Maximize_Click"
+                        ToolTip="Maximize" AutomationProperties.Name="Maximize">
+                    <Grid>
+                        <Path x:Name="MaximizeIcon" Style="{StaticResource TitleBarIcon}" Data="M0.5,0.5 H9.5 V9.5 H0.5 Z" />
+                        <Path x:Name="RestoreIcon" Style="{StaticResource TitleBarIcon}" Visibility="Collapsed"
+                              Data="M0.5,2.5 H7.5 V9.5 H0.5 Z M2.5,2.5 V0.5 H9.5 V7.5 H7.5" />
+                    </Grid>
+                </Button>
+                <Button Style="{StaticResource TitleBarCloseButton}" Click="Skip_Click"
+                        ToolTip="Skip" AutomationProperties.Name="Close">
+                    <Path Style="{StaticResource TitleBarIcon}" Data="M0.5,0.5 L9.5,9.5 M9.5,0.5 L0.5,9.5" />
+                </Button>
+            </StackPanel>
+        </Grid>
+
         <!-- Footer -->
         <Border DockPanel.Dock="Bottom" Background="{DynamicResource SidebarBg}"
                 BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,1,0,0" Padding="32,14">
@@ -103,4 +130,5 @@
             </StackPanel>
         </ScrollViewer>
     </DockPanel>
+    </Border>
 </Window>

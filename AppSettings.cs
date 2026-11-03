@@ -141,6 +141,16 @@ public sealed class AppSettings : ObservableObject
     bool idleDimEnabled;
     int idleMinutes = 5;
     int idleStrength = 70;
+    bool focusEnabled;
+    bool dimContrastEnabled;
+    int dimContrast = 30;
+    bool dimSaturationEnabled;
+    int dimSaturation = 40;
+    bool osdSafe;
+    bool oledProtect;
+    int focusStrength = 70;
+    bool mediaOverride = true;
+    bool isolateHotkeyEnabled = true;
     bool nightEnabled;
     string nightStart = "21:00";
     string nightEnd = "07:00";
@@ -227,6 +237,25 @@ public sealed class AppSettings : ObservableObject
     public bool IdleDimEnabled { get => idleDimEnabled; set => Set(ref idleDimEnabled, value); }
     public int IdleMinutes { get => idleMinutes; set => Set(ref idleMinutes, Math.Clamp(value, 1, 120)); }
     public int IdleStrength { get => idleStrength; set => Set(ref idleStrength, Math.Clamp(value, 10, 100)); }
+
+    /// <summary>Also lower contrast on dimmed monitors that support it (DDC/CI).</summary>
+    public bool DimContrastEnabled { get => dimContrastEnabled; set => Set(ref dimContrastEnabled, value); }
+    public int DimContrast { get => dimContrast; set => Set(ref dimContrast, Math.Clamp(value, 5, 70)); }
+    /// <summary>Also mute colours on dimmed monitors that support it (DDC/CI).</summary>
+    public bool DimSaturationEnabled { get => dimSaturationEnabled; set => Set(ref dimSaturationEnabled, value); }
+    public int DimSaturation { get => dimSaturation; set => Set(ref dimSaturation, Math.Clamp(value, 5, 90)); }
+    /// <summary>Send DDC/CI commands slowly and in small steps, for monitors that choke on quick changes.</summary>
+    public bool OsdSafe { get => osdSafe; set => Set(ref osdSafe, value); }
+    /// <summary>Slowly drift a faint gradient across dimmed screens so no pixel stays at one level.</summary>
+    public bool OledProtect { get => oledProtect; set => Set(ref oledProtect, value); }
+
+    /// <summary>Outside games, dim everything except the window you are working in.</summary>
+    public bool FocusEnabled { get => focusEnabled; set => Set(ref focusEnabled, value); }
+    public int FocusStrength { get => focusStrength; set => Set(ref focusStrength, Math.Clamp(value, 10, 95)); }
+    /// <summary>Keep video players and fullscreen videos lit on a dimmed monitor.</summary>
+    public bool MediaOverride { get => mediaOverride; set => Set(ref mediaOverride, value); }
+    /// <summary>Ctrl+Alt+I: everything pitch-black except the window in front.</summary>
+    public bool IsolateHotkeyEnabled { get => isolateHotkeyEnabled; set => Set(ref isolateHotkeyEnabled, value); }
 
     /// <summary>Warm, dimmer tint on a schedule.</summary>
     public bool NightEnabled { get => nightEnabled; set => Set(ref nightEnabled, value); }
