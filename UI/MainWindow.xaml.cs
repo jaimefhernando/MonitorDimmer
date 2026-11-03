@@ -6,17 +6,13 @@ using System.Windows.Media;
 using MonitorDimmer.Core;
 using MonitorDimmer.Core.Rgb;
 using MonitorDimmer.Platform;
+using MonitorDimmer.UI.Controls;
 
 namespace MonitorDimmer.UI;
 
 public partial class MainWindow : Window
 {
     public sealed record ModeOption(DimMode Mode, string Label)
-    {
-        public override string ToString() => Label;
-    }
-
-    public sealed record ThemeOption(AppTheme Theme, string Label)
     {
         public override string ToString() => Label;
     }
@@ -31,25 +27,6 @@ public partial class MainWindow : Window
         new(DimMode.FullscreenWatched, "A watched app or game is fullscreen"),
         new(DimMode.AnyFullscreen, "Any app is fullscreen (except exceptions)"),
         new(DimMode.WhileOpen, "A watched app or game is open, fullscreen or not"),
-    };
-
-    public sealed record MethodOption(DimMethod Value, string Label)
-    {
-        public override string ToString() => Label;
-    }
-
-    static readonly MethodOption[] Methods =
-    {
-        new(DimMethod.Overlay, "Black overlay"),
-        new(DimMethod.Brightness, "Monitor brightness (DDC/CI)"),
-        new(DimMethod.Both, "Both: lower brightness and overlay"),
-    };
-
-    static readonly ThemeOption[] Themes =
-    {
-        new(AppTheme.Dark, "Dark"),
-        new(AppTheme.Light, "Light"),
-        new(AppTheme.System, "Same as Windows"),
     };
 
     static readonly Swatch[] SwatchColors =
@@ -71,10 +48,8 @@ public partial class MainWindow : Window
         DataContext = settings;
 
         Icon = AppIcon.ImageSource;
-        HeaderIcon.Source = AppIcon.ImageSource;
         ModeBox.ItemsSource = Modes;
-        MethodBox.ItemsSource = Methods;
-        ThemeBox.ItemsSource = Themes;
+        Home.Init(settings, controller, OpenProfile, () => Nav.SelectedItem = StatsTab);
         Profiles.Init(settings, controller);
         Stats.Init(controller.Sessions);
         controller.Brightness.SupportChanged += () => Dispatcher.BeginInvoke(new Action(ShowBrightnessSupport));
@@ -131,13 +106,34 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>The Monitors page's map follows what is happening right now.</summary>
     void UpdateStatus()
     {
-        StatusText.Text = controller.Status;
-        StatusDot.Fill = controller.IsDimming
-            ? (Brush)FindResource("Accent")
-            : settings.Enabled && !controller.AutoPaused ? (Brush)FindResource("Success") : Brushes.Gray;
+        var states = controller.Monitors;
+        MonitorsMap.Tiles = states.Select(s => new MonitorTile(s.Monitor.Bounds, $"Display {s.Monitor.Number}",
+            s.Kind switch
+            {
+                MonitorDimKind.Game => "GAME",
+                MonitorDimKind.Dimmed => $"DIMMED {s.Strength} %",
+                MonitorDimKind.Idle => $"IDLE {s.Strength} %",
+                MonitorDimKind.Night => "NIGHT MODE",
+                _ => s.Monitor.IsPrimary ? "PRIMARY" : "SIDE",
+            },
+            $"{s.Monitor.FriendlyName} · {s.Monitor.Bounds.Width} × {s.Monitor.Bounds.Height}",
+            s.Kind == MonitorDimKind.Game ? MonitorTileState.Game
+                : s.Kind is MonitorDimKind.Dimmed or MonitorDimKind.Idle ? MonitorTileState.Dimmed : MonitorTileState.Normal)).ToList();
+        System.Windows.Automation.AutomationProperties.SetName(MonitorsMap,
+            "Monitor arrangement: " + string.Join("; ", states.Select(s => $"Display {s.Monitor.Number}, {s.Monitor.FriendlyName}")));
     }
+
+    /// <summary>Opens the Games page on a game's profile, making the profile when there is none.</summary>
+    void OpenProfile(string? exe)
+    {
+        Nav.SelectedItem = GamesTab;
+        if (exe != null) Profiles.ShowProfile(exe, controller.SessionName ?? "");
+    }
+
+    void AddGame_Click(object sender, RoutedEventArgs e) => Profiles.AddGame();
 
     /// <summary>Adds newly connected monitors and checks which apps and devices are available.</summary>
     DateTime lastBrightnessCheck = DateTime.MinValue;
@@ -195,11 +191,13 @@ public partial class MainWindow : Window
             ms.BrightnessStatus = controller.Brightness.GetSupport(ms.Id) switch
             {
                 null => "Checking brightness control…",
-                { Supported: true } s => $"Brightness control works (DDC/CI). Normal brightness: {s.Current}.",
-                _ => "No brightness control: the monitor did not answer over DDC/CI, so the overlay is used. "
-                    + "Some monitors have DDC/CI turned off in their own menu.",
+                { Supported: true } s => $"Real brightness control (DDC/CI) · normally {s.Current}",
+                _ => "No brightness control over DDC/CI, so the overlay is used. Some monitors have DDC/CI turned off in their own menu.",
             };
         }
+        var connected = settings.Monitors.Where(m => m.IsConnected).ToList();
+        int withDdc = connected.Count(m => controller.Brightness.GetSupport(m.Id)?.Supported == true);
+        Tracking.SetText(MonitorsKicker, $"{connected.Count} CONNECTED · {withDdc} WITH BRIGHTNESS CONTROL");
     }
 
     void ShowGames()
@@ -209,6 +207,7 @@ public partial class MainWindow : Window
         GamesSummary.Text = games.Count == 0
             ? "No installed games found yet. Games Windows Game Bar recognises are still detected."
             : $"{games.Count} installed games found. Games Windows Game Bar recognises are detected too.";
+        Tracking.SetText(GamesKicker, $"{games.Count} DETECTED · {settings.Profiles.Count} WITH A PROFILE");
     }
 
     void Rescan_Click(object sender, RoutedEventArgs e)
@@ -313,6 +312,8 @@ public partial class MainWindow : Window
         UpdateStatusText.Visibility = updater.Status.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         CheckUpdatesButton.IsEnabled = !updater.Busy && !updater.ReadyToInstall;
         InstallUpdateButton.Visibility = updater.ReadyToInstall ? Visibility.Visible : Visibility.Collapsed;
+        // The version box at the bottom of the sidebar
+        Nav.Tag = updater.ReadyToInstall ? $"{Updater.CurrentVersion} · update ready" : Updater.CurrentVersion;
     }
 
     async void CheckUpdates_Click(object sender, RoutedEventArgs e) =>
@@ -370,8 +371,6 @@ public partial class MainWindow : Window
     void Identify_Click(object sender, RoutedEventArgs e) => IdentifyForm.ShowOnAll();
 
     void OpenLog_Click(object sender, RoutedEventArgs e) => App.OpenFolder(AppSettings.Folder);
-
-    void Hide_Click(object sender, RoutedEventArgs e) => Hide();
 
     void Exit_Click(object sender, RoutedEventArgs e) => ((App)Application.Current).ExitApp();
 

@@ -38,7 +38,10 @@ your user only (no admin rights) and keeps itself up to date. Windows 10 or 11, 
   an update is ready; each can be turned off.
 - **Play stats:** time per game, sessions, longest session, the last 14 days; stored locally in
   `sessions.jsonl`.
-- **Dark mode** (default), light mode or follow Windows.
+- **Graphite and amber design:** a sidebar with Home, Games, Monitors, Lighting, Automations, Stats
+  and Settings; the Home page shows what is dimmed right now on a to-scale map of your monitors.
+  Dark (default), light or follow Windows. Uses the Exo 2 font (SIL Open Font License,
+  `assets/fonts/OFL.txt`).
 - **Exceptions** (Discord, OBS...): never trigger dimming, and their windows are cut out of the
   overlay so they stay fully visible on a dimmed monitor.
 - **Per-monitor settings:** never dim a monitor, or give it its own darkness. Monitors are

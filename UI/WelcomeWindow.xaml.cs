@@ -3,6 +3,7 @@ using System.Windows;
 using MonitorDimmer.Core;
 using MonitorDimmer.Core.Rgb;
 using MonitorDimmer.Platform;
+using MonitorDimmer.UI.Controls;
 
 namespace MonitorDimmer.UI;
 
@@ -14,10 +15,20 @@ public partial class WelcomeWindow : Window
 {
     public sealed class MonitorRow : ObservableObject
     {
-        string detail = "";
-        public MonitorRow(string name) => Name = name;
+        string badge = "Checking…";
+        System.Windows.Media.Brush? badgeBrush;
+
+        public MonitorRow(string name, string detail)
+        {
+            Name = name;
+            Detail = detail;
+        }
+
         public string Name { get; }
-        public string Detail { get => detail; set => Set(ref detail, value); }
+        public string Detail { get; }
+        /// <summary>How this monitor can be dimmed: brightness control, overlay, or still checking.</summary>
+        public string Badge { get => badge; set => Set(ref badge, value); }
+        public System.Windows.Media.Brush? BadgeBrush { get => badgeBrush; set => Set(ref badgeBrush, value); }
     }
 
     public sealed class Suggestion : ObservableObject
@@ -56,11 +67,18 @@ public partial class WelcomeWindow : Window
         this.settings = settings;
         this.controller = controller;
         Icon = AppIcon.ImageSource;
-        HeaderIcon.Source = AppIcon.ImageSource;
 
         foreach (var m in monitors)
-            monitorRows[m.Id] = new MonitorRow(m.Description) { Detail = "Checking brightness control…" };
+        {
+            string name = m.FriendlyName.Length > 0 ? $"Display {m.Number} · {m.FriendlyName}" : $"Display {m.Number}";
+            string detail = $"{m.Bounds.Width} × {m.Bounds.Height}" + (m.IsPrimary ? " · primary" : " · side monitor");
+            monitorRows[m.Id] = new MonitorRow(name, detail) { BadgeBrush = (System.Windows.Media.Brush)FindResource("TextMuted") };
+        }
         MonitorList.ItemsSource = monitorRows.Values.ToList();
+        Map.Tiles = monitors.Select(m => new MonitorTile(m.Bounds, $"Display {m.Number}",
+            m.IsPrimary ? "PRIMARY" : "SIDE", m.FriendlyName, MonitorTileState.Normal)).ToList();
+        System.Windows.Automation.AutomationProperties.SetName(Map,
+            "Your monitors: " + string.Join("; ", monitors.Select(m => $"Display {m.Number}, {m.FriendlyName}")));
 
         BuildSuggestions();
         SuggestionList.ItemsSource = suggestions;
@@ -146,12 +164,15 @@ public partial class WelcomeWindow : Window
     {
         foreach (var m in monitors)
         {
-            monitorRows[m.Id].Detail = controller.Brightness.GetSupport(m.Id) switch
+            var support = controller.Brightness.GetSupport(m.Id);
+            var row = monitorRows[m.Id];
+            row.Badge = support switch
             {
-                null => "Checking brightness control…",
-                { Supported: true } s => $"Brightness can be controlled (DDC/CI), currently {s.Current}.",
-                _ => "No brightness control over DDC/CI; it will be dimmed with a dark overlay instead.",
+                null => "Checking…",
+                { Supported: true } s => $"Brightness control · {s.Current}",
+                _ => "Overlay only",
             };
+            row.BadgeBrush = (System.Windows.Media.Brush)FindResource(support?.Supported == true ? "Accent" : "TextMuted");
         }
 
         if (brightnessSuggestion == null) return;

@@ -1,0 +1,206 @@
+<UserControl x:Class="MonitorDimmer.UI.HomeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:MonitorDimmer.UI.Controls">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="32,28,24,24">
+        <StackPanel>
+            <!-- Header -->
+            <DockPanel Margin="0,0,0,20">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="PauseButton" Click="Pause_Click" MinHeight="44">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="M3,0 V14 M11,0 V14" Stroke="{DynamicResource TextMain}" StrokeThickness="2"
+                                  Width="12" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="PauseText" Text="Pause 1 hour" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="AutoButton" Click="Auto_Click" MinHeight="44" Margin="0">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="AutoDot" Width="8" Height="8" Margin="0,0,10,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="AutoText" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock x:Name="ClockText" Style="{StaticResource Kicker}" />
+                    <TextBlock Text="Home" Style="{StaticResource PageTitle}" />
+                </StackPanel>
+            </DockPanel>
+
+            <!-- Now dimming -->
+            <c:ChamferBorder Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
+                             Chamfer="18" Padding="28,26" Margin="0,0,0,16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="280" />
+                        <ColumnDefinition Width="28" />
+                        <ColumnDefinition Width="1.05*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Rectangle x:Name="StateDiamond" Width="8" Height="8" Margin="0,0,10,0" VerticalAlignment="Center">
+                                <Rectangle.LayoutTransform>
+                                    <RotateTransform Angle="45" />
+                                </Rectangle.LayoutTransform>
+                            </Rectangle>
+                            <TextBlock x:Name="StateKicker" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock x:Name="SessionTitle" FontSize="40" FontWeight="Bold" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextMain}" Margin="0,0,0,10" />
+                        <TextBlock x:Name="SessionDetail" FontSize="15" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,14" />
+                        <ItemsControl x:Name="ExtrasList">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource Chip}">
+                                        <TextBlock Text="{Binding}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button x:Name="ProfileButton" Click="Profile_Click" MinHeight="44" />
+                            <Button x:Name="DimNowButton" Click="DimNow_Click" MinHeight="44" Style="{StaticResource GhostButton}" />
+                        </StackPanel>
+                    </StackPanel>
+                    <Border Grid.Column="2" Background="{DynamicResource InputBg}" BorderBrush="{DynamicResource Divider}"
+                            BorderThickness="1" Padding="18" MinHeight="200">
+                        <c:MonitorMap x:Name="Map" />
+                    </Border>
+                </Grid>
+            </c:ChamferBorder>
+
+            <!-- Quick switches -->
+            <UniformGrid Columns="4" Margin="0,0,-12,4">
+                <Border Style="{StaticResource Card}" Margin="0,0,12,12" Padding="18">
+                    <StackPanel>
+                        <DockPanel>
+                            <CheckBox DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="{Binding Enabled}"
+                                      AutomationProperties.Name="Game dimming" Margin="0,-10,0,0" />
+                            <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="GAMES" />
+                        </DockPanel>
+                        <TextBlock Text="Game dimming" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextMain}" />
+                        <TextBlock x:Name="GamesDetail" FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,12,12" Padding="18">
+                    <StackPanel>
+                        <DockPanel>
+                            <CheckBox DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="{Binding NightEnabled}"
+                                      AutomationProperties.Name="Night mode" Margin="0,-10,0,0" />
+                            <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="SCHEDULE" />
+                        </DockPanel>
+                        <TextBlock Text="Night mode" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextMain}" />
+                        <TextBlock FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0} – {1}">
+                                    <Binding Path="NightStart" />
+                                    <Binding Path="NightEnd" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,12,12" Padding="18">
+                    <StackPanel>
+                        <DockPanel>
+                            <CheckBox DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="{Binding IdleDimEnabled}"
+                                      AutomationProperties.Name="Idle dimming" Margin="0,-10,0,0" />
+                            <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="BURN-IN" />
+                        </DockPanel>
+                        <TextBlock Text="Idle dimming" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextMain}" />
+                        <TextBlock FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}After {0} min · {1} %">
+                                    <Binding Path="IdleMinutes" />
+                                    <Binding Path="IdleStrength" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,12,12" Padding="18">
+                    <StackPanel>
+                        <DockPanel>
+                            <CheckBox DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="{Binding LockMouse}"
+                                      AutomationProperties.Name="Mouse lock" Margin="0,-10,0,0" />
+                            <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="FOCUS" />
+                        </DockPanel>
+                        <TextBlock Text="Mouse lock" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextMain}" />
+                        <TextBlock Text="Keep the cursor on the game" FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <!-- This week and recent sessions -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource Card}" Margin="0">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,14">
+                            <Button DockPanel.Dock="Right" Content="All stats" Style="{StaticResource LinkButton}" Click="AllStats_Click" />
+                            <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="THIS WEEK" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                            <TextBlock x:Name="WeekTotal" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource TextMain}" />
+                            <TextBlock x:Name="WeekSessions" Foreground="{DynamicResource TextSecondary}" Margin="12,0,0,6"
+                                       VerticalAlignment="Bottom" />
+                        </StackPanel>
+                        <ItemsControl x:Name="WeekBars" Height="112" AutomationProperties.Name="Play time per day this week">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Rows="1" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="5,0" ToolTip="{Binding Tip}">
+                                        <TextBlock DockPanel.Dock="Bottom" Text="{Binding Label}" FontSize="11" HorizontalAlignment="Center"
+                                                   Foreground="{DynamicResource TextMuted}" Margin="0,6,0,0" />
+                                        <Border VerticalAlignment="Bottom" Height="{Binding Height}" MinHeight="2" Background="{Binding Fill}" />
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource Card}" Margin="0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="RECENT SESSIONS" Margin="0,0,0,10" />
+                        <TextBlock x:Name="NoSessionsText" Style="{StaticResource Hint}"
+                                   Text="Your play sessions show up here after a game has dimmed your monitors for 30 seconds." />
+                        <ItemsControl x:Name="RecentList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{DynamicResource Divider}" BorderThickness="0,0,0,1" MinHeight="46">
+                                        <DockPanel VerticalAlignment="Center">
+                                            <Border DockPanel.Dock="Left" Width="32" Height="32" Background="{DynamicResource SelectedBg}" Margin="0,0,12,0">
+                                                <TextBlock Text="{Binding Mono}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextMain}"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Time}" FontWeight="SemiBold" Width="86" TextAlignment="Right"
+                                                       Foreground="{DynamicResource TextMain}" VerticalAlignment="Center" />
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding When}" FontSize="13" Margin="8,0"
+                                                       Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource TextMain}" VerticalAlignment="Center" />
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

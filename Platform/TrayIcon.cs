@@ -13,6 +13,8 @@ internal sealed class TrayIcon : IDisposable
     readonly ToolStripMenuItem pause;
     readonly ToolStripMenuItem resume;
     readonly ToolStripMenuItem night;
+    readonly ToolStripLabel header;
+    readonly ToolStripLabel headerDetail;
 
     public TrayIcon(DimController controller, Action openSettings, Action exit)
     {
@@ -29,13 +31,17 @@ internal sealed class TrayIcon : IDisposable
             new ToolStripMenuItem("Until I resume", null, (_, _) => controller.PauseFor(null)),
         });
         resume = new ToolStripMenuItem("Resume", null, (_, _) => controller.Resume());
-        var settings = new ToolStripMenuItem("Settings…", null, (_, _) => openSettings()) { Font = BoldMenuFont() };
+        var settings = new ToolStripMenuItem("Open Monitor Dimmer", null, (_, _) => openSettings()) { Font = BoldMenuFont() };
+        // What is happening right now, as in the app's Home page
+        header = new ToolStripLabel { Font = BoldMenuFont(), Padding = new Padding(4, 6, 4, 2) };
+        headerDetail = new ToolStripLabel { Padding = new Padding(4, 0, 4, 6) };
 
         menu = new ContextMenuStrip();
         menu.Items.AddRange(new ToolStripItem[]
         {
-            settings, new ToolStripSeparator(), dimNow, night, pause, resume, new ToolStripSeparator(),
-            new ToolStripMenuItem("Exit", null, (_, _) => exit()),
+            header, headerDetail, new ToolStripSeparator(),
+            dimNow, night, pause, resume, new ToolStripSeparator(),
+            settings, new ToolStripMenuItem("Exit", null, (_, _) => exit()),
         });
         menu.Opening += (_, _) => Refresh();
 
@@ -65,6 +71,23 @@ internal sealed class TrayIcon : IDisposable
         pause.Visible = !paused;
         resume.Visible = paused;
         resume.Text = controller.PausedUntil is DateTime until ? $"Resume (paused until {until:HH:mm})" : "Resume";
+
+        var dimmed = controller.Monitors.Where(m => m.Kind == MonitorDimKind.Dimmed).ToList();
+        if (controller.SessionName != null)
+        {
+            header.Text = "Dimming for " + controller.SessionName;
+            string time = controller.SessionStartedAt is DateTime start ? " · " + SessionTracker.Format(DateTime.Now - start) : "";
+            headerDetail.Text = (dimmed.Count > 0
+                ? string.Join(", ", dimmed.Select(d => $"Display {d.Monitor.Number}")) + $" at {dimmed[0].Strength} %"
+                : "Dimming") + time;
+        }
+        else
+        {
+            header.Text = controller.ManualActive ? "Dimmed by hand" : paused ? "Paused" : "Monitor Dimmer";
+            headerDetail.Text = controller.ManualActive || paused ? controller.Status : "Waiting for a game";
+        }
+        header.ForeColor = controller.IsDimming ? DarkMenuColors.Accent : MenuText;
+        headerDetail.ForeColor = MutedText;
         string text = "Monitor Dimmer: " + controller.Status;
         icon.Text = text.Length > 63 ? text[..62] + "…" : text;
     }
@@ -78,6 +101,9 @@ internal sealed class TrayIcon : IDisposable
         icon.ShowBalloonTip(5000, title, text, ToolTipIcon.None);
         Log.Write("Notification: " + title);
     }
+
+    static Color MenuText => ThemeManager.IsDark ? DarkMenuColors.Text : SystemColors.MenuText;
+    static Color MutedText => ThemeManager.IsDark ? Color.FromArgb(140, 146, 156) : SystemColors.GrayText;
 
     void ApplyTheme()
     {
@@ -127,11 +153,12 @@ internal sealed class TrayIcon : IDisposable
 
     sealed class DarkMenuColors : ProfessionalColorTable
     {
-        public static readonly Color Text = Color.FromArgb(231, 233, 236);
+        // The app's graphite palette (Themes\Dark.xaml)
+        public static readonly Color Text = Color.FromArgb(236, 238, 241);
         public static readonly Color Accent = Color.FromArgb(242, 179, 61);
-        static readonly Color Back = Color.FromArgb(30, 33, 38);
-        static readonly Color Hover = Color.FromArgb(52, 57, 67);
-        static readonly Color Line = Color.FromArgb(58, 63, 73);
+        static readonly Color Back = Color.FromArgb(17, 19, 23);
+        static readonly Color Hover = Color.FromArgb(30, 34, 40);
+        static readonly Color Line = Color.FromArgb(42, 47, 55);
 
         public override Color ToolStripDropDownBackground => Back;
         public override Color ImageMarginGradientBegin => Back;

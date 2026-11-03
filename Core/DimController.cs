@@ -4,6 +4,12 @@ using MonitorDimmer.Platform;
 
 namespace MonitorDimmer.Core;
 
+public enum MonitorDimKind { Normal, Game, Dimmed, Idle, Night }
+
+/// <param name="Strength">Darkness in percent while dimmed, idle or tinted.</param>
+/// <param name="UsesBrightness">Dimmed through the monitor's own backlight (DDC/CI).</param>
+public sealed record MonitorState(MonitorInfo Monitor, MonitorDimKind Kind, int Strength, bool UsesBrightness);
+
 /// <summary>
 /// Whenever windows change: finds the monitors that should stay bright, dims the others (overlay
 /// and/or real brightness), keeps exception apps cut out, and runs the game's profile.
@@ -284,11 +290,17 @@ public sealed class DimController : IDisposable
 
         var overlayIds = new HashSet<string>();
         var brightnessIds = new HashSet<string>();
+        var states = new List<MonitorState>();
         if (plan != null) bright.UnionWith(plan.KeepBrightMonitorIds);
         foreach (var monitor in monitors)
         {
             var ms = settings.FindMonitor(monitor.Id);
-            if (ms?.NeverDim == true) continue;
+            var kind = triggerIds.Contains(monitor.Id) ? MonitorDimKind.Game : MonitorDimKind.Normal;
+            if (ms?.NeverDim == true)
+            {
+                states.Add(new MonitorState(monitor, kind, 0, false));
+                continue;
+            }
 
             if (plan != null && !bright.Contains(monitor.Id))
             {
@@ -310,16 +322,23 @@ public sealed class DimController : IDisposable
                     overlayIds.Add(monitor.Id);
                     ShowOverlay(monitor, Black, strength / 100.0, ExceptionHoles(windows, monitor, exceptions));
                 }
+                states.Add(new MonitorState(monitor, MonitorDimKind.Dimmed, strength, ddc));
             }
             else if (idle.Contains(monitor.Id))
             {
                 overlayIds.Add(monitor.Id);
                 ShowOverlay(monitor, Black, settings.IdleStrength / 100.0, ExceptionHoles(windows, monitor, exceptions));
+                states.Add(new MonitorState(monitor, MonitorDimKind.Idle, settings.IdleStrength, false));
             }
             else if (NightOn && (settings.NightAllMonitors || !monitor.IsPrimary) && !triggerIds.Contains(monitor.Id))
             {
                 overlayIds.Add(monitor.Id);
                 ShowOverlay(monitor, NightTint, settings.NightStrength / 100.0, new List<RECT>());
+                states.Add(new MonitorState(monitor, MonitorDimKind.Night, settings.NightStrength, false));
+            }
+            else
+            {
+                states.Add(new MonitorState(monitor, kind, 0, false));
             }
         }
 
@@ -355,17 +374,52 @@ public sealed class DimController : IDisposable
             });
         }
 
-        if (status != Status)
+        // What the Home page and tray show
+        var extrasNow = new List<string>();
+        if (plan != null)
         {
+            if (states.Any(s => s.UsesBrightness)) extrasNow.Add("Real brightness · DDC/CI");
+            if (plan.Rgb) extrasNow.Add(plan.RgbOptions.Style == RgbStyle.Off ? "RGB lights off" : "RGB dimmed");
+            if (plan.WallpaperEngine) extrasNow.Add("Wallpaper Engine paused");
+            if (plan.Rainmeter) extrasNow.Add("Rainmeter hidden");
+            if (plan.BoostPriority) extrasNow.Add("Game priority raised");
+            if (plan.Power) extrasNow.Add("High performance power");
+            if (mouseLock.IsLocked && triggerMonitor != null) extrasNow.Add($"Mouse locked to Display {triggerMonitor.Number}");
+        }
+        string signature = status + "|" + string.Join(";", states.Select(s => $"{s.Monitor.Id}:{s.Kind}:{s.Strength}"))
+            + "|" + string.Join(";", extrasNow);
+        Monitors = states;
+        SessionExtras = extrasNow;
+
+        if (signature != lastSignature)
+        {
+            lastSignature = signature;
             Status = status;
             StateChanged?.Invoke();
         }
     }
 
+    string lastSignature = "";
+
+    /// <summary>Each monitor and what is happening to it, as of the last update.</summary>
+    public IReadOnlyList<MonitorState> Monitors { get; private set; } = Array.Empty<MonitorState>();
+
+    /// <summary>The game or app the current session is for; null when not dimming for one.</summary>
+    public string? SessionName { get; private set; }
+    public DateTime? SessionStartedAt { get; private set; }
+    /// <summary>Program of the current session, e.g. "eldenring.exe".</summary>
+    public string? SessionExe { get; private set; }
+
+    /// <summary>Short descriptions of what the current session changed ("Wallpaper Engine paused").</summary>
+    public IReadOnlyList<string> SessionExtras { get; private set; } = Array.Empty<string>();
+
     void BeginSession(string key, GameProfile? profile, WindowInfo? trigger)
     {
         sessionKey = key;
         sessionPlan = SessionPlan.Resolve(settings, profile);
+        SessionName = trigger != null ? DisplayName(trigger, profile) : null;
+        SessionExe = trigger?.ProcessName;
+        SessionStartedAt = DateTime.Now;
         actions.DimStarted(sessionPlan, trigger?.ProcessId);
         if (trigger != null && settings.TrackSessions)
         {
@@ -383,6 +437,9 @@ public sealed class DimController : IDisposable
         Log.Write($"Dimming ended: {sessionKey}");
         sessionKey = null;
         sessionPlan = null;
+        SessionName = null;
+        SessionExe = null;
+        SessionStartedAt = null;
     }
 
     static string DisplayName(WindowInfo w, GameProfile? profile)

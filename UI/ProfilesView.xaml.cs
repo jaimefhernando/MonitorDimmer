@@ -7,11 +7,6 @@ namespace MonitorDimmer.UI;
 
 public partial class ProfilesView : UserControl
 {
-    public sealed record Option<T>(T Value, string Label)
-    {
-        public override string ToString() => Label;
-    }
-
     /// <summary>One "keep this monitor bright" checkbox for the selected profile.</summary>
     public sealed class MonitorChoice
     {
@@ -38,38 +33,12 @@ public partial class ProfilesView : UserControl
         }
     }
 
-    static readonly Option<ProfileDimMethod>[] Methods =
-    {
-        new(ProfileDimMethod.Default, "Same as the General tab"),
-        new(ProfileDimMethod.Overlay, "Black overlay"),
-        new(ProfileDimMethod.Brightness, "Monitor brightness (DDC/CI)"),
-        new(ProfileDimMethod.Both, "Both"),
-    };
-
-    static readonly Option<ProfileLighting>[] Lightings =
-    {
-        new(ProfileLighting.Default, "Same as the Lighting tab"),
-        new(ProfileLighting.Unchanged, "Leave my lighting alone"),
-        new(ProfileLighting.Off, "Turn the lights off"),
-        new(ProfileLighting.Color, "Use a dim color"),
-    };
-
-    static readonly Option<ProfileSwitch>[] MouseLocks =
-    {
-        new(ProfileSwitch.Default, "Same as the General tab"),
-        new(ProfileSwitch.On, "Keep the mouse on the game's monitor"),
-        new(ProfileSwitch.Off, "Off for this game"),
-    };
-
     AppSettings settings = null!;
     DimController controller = null!;
 
     public ProfilesView()
     {
         InitializeComponent();
-        MethodBox.ItemsSource = Methods;
-        LightingBox.ItemsSource = Lightings;
-        MouseLockBox.ItemsSource = MouseLocks;
     }
 
     public void Init(AppSettings settings, DimController controller)
@@ -95,21 +64,23 @@ public partial class ProfilesView : UserControl
             .ToList();
     }
 
-    void UpdateEmptyState()
+    /// <summary>Selects the profile for <paramref name="exe"/>, making one when there is none.</summary>
+    public void ShowProfile(string exe, string suggestedName)
     {
-        EmptyListText.Visibility = settings.Profiles.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        bool selected = ProfileList.SelectedItem != null;
-        Editor.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
-        NoSelectionText.Visibility = selected ? Visibility.Collapsed : Visibility.Visible;
+        exe = WindowScanner.NormalizeExe(exe);
+        if (exe.Length == 0) return;
+        var profile = settings.FindProfile(exe);
+        if (profile == null)
+        {
+            profile = new GameProfile { ExeName = exe, Name = suggestedName.Length > 0 ? suggestedName : Path.GetFileNameWithoutExtension(exe) };
+            settings.Profiles.Add(profile);
+        }
+        ProfileList.SelectedItem = profile;
+        ProfileList.ScrollIntoView(profile);
     }
 
-    void ProfileList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        RefreshMonitors();
-        UpdateEmptyState();
-    }
-
-    void Add_Click(object sender, RoutedEventArgs e)
+    /// <summary>Picks a running or recently played app and makes a profile for it.</summary>
+    public void AddGame()
     {
         // Recently played games are offered too, so a profile can be made without the game running
         var recent = controller.Sessions.Load()
@@ -125,15 +96,19 @@ public partial class ProfilesView : UserControl
         if (picker.ShowDialog() != true || picker.SelectedApps.Count == 0) return;
 
         var app = picker.SelectedApps[0];
-        string exe = WindowScanner.NormalizeExe(app.Name);
-        if (settings.FindProfile(exe) is { } existing)
-        {
-            ProfileList.SelectedItem = existing;
-            return;
-        }
-        var profile = new GameProfile { ExeName = exe, Name = SuggestName(app) };
-        settings.Profiles.Add(profile);
-        ProfileList.SelectedItem = profile;
+        ShowProfile(app.Name, SuggestName(app));
+    }
+
+    void UpdateEmptyState()
+    {
+        EmptyListText.Visibility = settings.Profiles.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        Editor.Visibility = ProfileList.SelectedItem != null ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    void ProfileList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        RefreshMonitors();
+        UpdateEmptyState();
     }
 
     static string SuggestName(AppPickerWindow.RunningApp app)

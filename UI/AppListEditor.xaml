@@ -3,18 +3,22 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <StackPanel>
         <Grid>
-            <ListBox x:Name="List" Height="132" SelectionMode="Extended"
-
-                     KeyDown="List_KeyDown" />
+            <ListBox x:Name="List" Height="132" SelectionMode="Extended" KeyDown="List_KeyDown"
+                     AutomationProperties.Name="Apps" />
             <TextBlock x:Name="EmptyText" Text="No apps yet." Style="{StaticResource Hint}"
-                       Margin="10,8,0,0" VerticalAlignment="Top" IsHitTestVisible="False" />
+                       Margin="12,9,0,0" VerticalAlignment="Top" IsHitTestVisible="False" />
         </Grid>
+        <!-- Type a name and add it -->
+        <DockPanel Margin="0,8,0,0">
+            <Button Content="Add" Click="Add_Click" DockPanel.Dock="Right" MinWidth="64" Margin="8,0,0,0" />
+            <TextBox x:Name="NameBox" ToolTip="Program name, for example vlc.exe" KeyDown="NameBox_KeyDown"
+                     AutomationProperties.Name="Program name to add" />
+        </DockPanel>
+        <!-- Or pick one; remove the selected ones -->
         <DockPanel Margin="0,8,0,0" LastChildFill="False">
             <Button Content="Add running app…" Click="Pick_Click" DockPanel.Dock="Left" />
-            <TextBox x:Name="NameBox" Width="150" DockPanel.Dock="Left" Margin="0,0,6,0"
-                     ToolTip="Program name, for example vlc.exe" KeyDown="NameBox_KeyDown" />
-            <Button Content="Add" Click="Add_Click" DockPanel.Dock="Left" MinWidth="56" />
-            <Button Content="Remove" Click="Remove_Click" DockPanel.Dock="Right" Margin="0" />
+            <Button Content="Remove selected" Click="Remove_Click" DockPanel.Dock="Right" Margin="0"
+                    Style="{StaticResource GhostButton}" />
         </DockPanel>
     </StackPanel>
 </UserControl>

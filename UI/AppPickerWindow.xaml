@@ -4,7 +4,7 @@
         Width="560" Height="480" MinWidth="420" MinHeight="320"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Background="{DynamicResource WindowBg}" Foreground="{DynamicResource TextMain}"
-        FontFamily="Segoe UI" FontSize="13">
+        FontFamily="{DynamicResource AppFont}" FontSize="14">
     <DockPanel Margin="16">
         <TextBlock x:Name="HintText" DockPanel.Dock="Top" Style="{StaticResource Hint}"
                    Text="Apps with an open window right now. Select one or more (Ctrl+click) and choose Add." />
