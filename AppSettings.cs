@@ -137,6 +137,10 @@ public sealed class AppSettings : ObservableObject
     bool boostPriority;
     ObservableCollection<string> closeApps = new();
     bool reopenClosedApps = true;
+    bool welcomeDone;
+    bool notifyOnDim = true;
+    bool notifyOnSessionEnd = true;
+    bool notifyOnUpdate = true;
 
     public AppSettings()
     {
@@ -227,6 +231,14 @@ public sealed class AppSettings : ObservableObject
     /// <summary>Apps closed while playing, e.g. launchers and updaters.</summary>
     public ObservableCollection<string> CloseApps { get => closeApps; set => SetList(ref closeApps, value); }
     public bool ReopenClosedApps { get => reopenClosedApps; set => Set(ref reopenClosedApps, value); }
+
+    /// <summary>The welcome screen was finished or skipped.</summary>
+    public bool WelcomeDone { get => welcomeDone; set => Set(ref welcomeDone, value); }
+    /// <summary>"Dimming for Elden Ring" when a game starts the dimming.</summary>
+    public bool NotifyOnDim { get => notifyOnDim; set => Set(ref notifyOnDim, value); }
+    /// <summary>"You played Elden Ring for 1 h 25 min" after a longer session.</summary>
+    public bool NotifyOnSessionEnd { get => notifyOnSessionEnd; set => Set(ref notifyOnSessionEnd, value); }
+    public bool NotifyOnUpdate { get => notifyOnUpdate; set => Set(ref notifyOnUpdate, value); }
 
     /// <summary>Whether <paramref name="now"/> falls in the night mode hours.</summary>
     public bool IsNightTime(DateTime now)

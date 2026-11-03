@@ -65,6 +65,12 @@ public sealed class DimController : IDisposable
 
     public event Action? StateChanged;
 
+    /// <summary>A game or watched app started the dimming (not when dimmed by hand): name, exe.</summary>
+    public event Action<string, string>? SessionStarted;
+
+    /// <summary>A recorded play session ended.</summary>
+    public event Action<PlaySession>? SessionEnded;
+
     public bool ManualActive => manualBrightId != null;
     /// <summary>Paused from the tray: no game, idle or night dimming until it ends.</summary>
     public bool AutoPaused => pausedUntil is DateTime until && DateTime.Now < until;
@@ -367,12 +373,13 @@ public sealed class DimController : IDisposable
             Sessions.Begin(trigger.ProcessName, DisplayName(trigger, profile), isGame);
         }
         Log.Write($"Dimming started: {key}" + (profile != null ? $" (profile '{profile.Name}')" : ""));
+        if (trigger != null) SessionStarted?.Invoke(DisplayName(trigger, profile), trigger.ProcessName);
     }
 
     void EndSession()
     {
         if (sessionPlan != null) actions.DimEnded(sessionPlan);
-        Sessions.End();
+        if (Sessions.End() is { } finished && !disposed) SessionEnded?.Invoke(finished);
         Log.Write($"Dimming ended: {sessionKey}");
         sessionKey = null;
         sessionPlan = null;

@@ -101,6 +101,17 @@
 
                         <Border Style="{StaticResource Card}">
                             <StackPanel>
+                                <TextBlock Text="Notifications" Style="{StaticResource CardTitle}" />
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Windows notifications from the tray icon. During a fullscreen game Windows usually holds them quietly in the notification centre." />
+                                <CheckBox IsChecked="{Binding NotifyOnDim}" Content="When a game starts the dimming (&quot;Dimming for Elden Ring&quot;)" />
+                                <CheckBox IsChecked="{Binding NotifyOnSessionEnd}" Content="How long you played, after sessions of 5 minutes or more" />
+                                <CheckBox IsChecked="{Binding NotifyOnUpdate}" Content="When a new version is ready" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
                                 <TextBlock Text="Keyboard shortcut" Style="{StaticResource CardTitle}" />
                                 <TextBlock Style="{StaticResource Hint}"
                                            Text="Dims every monitor except the one you are using, without waiting for a fullscreen app. Press it again to undo." />
@@ -150,6 +161,7 @@
                                 <StackPanel Orientation="Horizontal">
                                     <Button Content="Export settings…" Click="ExportSettings_Click" />
                                     <Button Content="Import settings…" Click="ImportSettings_Click" />
+                                    <Button Content="Show welcome screen" Click="ShowWelcome_Click" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>

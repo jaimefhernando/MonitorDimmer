@@ -32,6 +32,10 @@ your user only (no admin rights) and keeps itself up to date. Windows 10 or 11, 
   playing, reopening them afterwards. The launcher that started the game is never closed.
 - **Tray:** pause for 30 min / 1 h / 2 h, night mode, dim now.
 - **Settings backup:** export and import all settings, profiles and lists.
+- **Welcome screen:** on first run, shows the monitors, games, Razer, Wallpaper Engine and
+  Rainmeter it found and suggests matching settings.
+- **Notifications:** "Dimming for Elden Ring", how long you played after longer sessions, and when
+  an update is ready; each can be turned off.
 - **Play stats:** time per game, sessions, longest session, the last 14 days; stored locally in
   `sessions.jsonl`.
 - **Dark mode** (default), light mode or follow Windows.

@@ -363,6 +363,8 @@ public partial class MainWindow : Window
         if (answer == MessageBoxResult.OK) ((App)Application.Current).ImportSettingsAndRestart(dialog.FileName);
     }
 
+    void ShowWelcome_Click(object sender, RoutedEventArgs e) => ((App)Application.Current).ShowWelcome();
+
     // --- Buttons ---
 
     void Identify_Click(object sender, RoutedEventArgs e) => IdentifyForm.ShowOnAll();

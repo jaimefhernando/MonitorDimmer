@@ -48,14 +48,16 @@ public sealed class SessionTracker : IDisposable
         checkpoint.Start();
     }
 
-    public void End()
+    /// <returns>The session that just ended, or null when none was open.</returns>
+    public PlaySession? End()
     {
         checkpoint.Stop();
-        if (open == null) return;
+        if (open == null) return null;
         var finished = open with { End = DateTime.Now };
         open = null;
         TryDelete(OpenFile);
         Append(finished);
+        return finished;
     }
 
     /// <summary>All recorded sessions, oldest first, including the one in progress.</summary>
@@ -144,4 +146,10 @@ public sealed class SessionTracker : IDisposable
     }
 
     public void Dispose() => End();
+
+    /// <summary>"< 1 min", "45 min", "1 h 25 min".</summary>
+    public static string Format(TimeSpan t) =>
+        t.TotalMinutes < 1 ? "< 1 min"
+        : t.TotalHours < 1 ? $"{(int)t.TotalMinutes} min"
+        : $"{(int)t.TotalHours} h {t.Minutes} min";
 }

@@ -49,6 +49,7 @@ internal sealed class TrayIcon : IDisposable
         {
             if (e.Button == MouseButtons.Left) openSettings();
         };
+        icon.BalloonTipClicked += (_, _) => openSettings();
 
         controller.StateChanged += Refresh;
         ThemeManager.Changed += ApplyTheme;
@@ -66,6 +67,16 @@ internal sealed class TrayIcon : IDisposable
         resume.Text = controller.PausedUntil is DateTime until ? $"Resume (paused until {until:HH:mm})" : "Resume";
         string text = "Monitor Dimmer: " + controller.Status;
         icon.Text = text.Length > 63 ? text[..62] + "…" : text;
+    }
+
+    /// <summary>
+    /// A Windows notification from the tray icon. Windows decides how it shows: as a toast, or
+    /// straight into the notification centre while a fullscreen game has Do Not Disturb on.
+    /// </summary>
+    public void Notify(string title, string text)
+    {
+        icon.ShowBalloonTip(5000, title, text, ToolTipIcon.None);
+        Log.Write("Notification: " + title);
     }
 
     void ApplyTheme()

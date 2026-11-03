@@ -80,8 +80,26 @@ public partial class App : Application
             if (settings.AutoUpdate) await Updater.CheckAsync(userAsked: false);
         };
         updateTimer.Start();
+        Notifications = new Notifications(settings, tray, controller, Updater);
 
-        if (!e.Args.Contains("--tray")) ShowSettings();
+        // The first time (even when started with Windows), the welcome screen comes first
+        if (!settings.WelcomeDone) ShowWelcome();
+        else if (!e.Args.Contains("--tray")) ShowSettings();
+    }
+
+    internal Notifications? Notifications { get; private set; }
+    WelcomeWindow? welcome;
+
+    public void ShowWelcome()
+    {
+        if (IsExiting) return;
+        if (welcome == null)
+        {
+            welcome = new WelcomeWindow(settings, controller);
+            welcome.Closed += (_, _) => welcome = null;
+        }
+        welcome.Show();
+        welcome.Activate();
     }
 
     void OnSettingChanged(string name)
@@ -168,6 +186,7 @@ public partial class App : Application
         controller.Dispose();
         hotkeys.Dispose();
         tray.Dispose();
+        welcome?.Close();
         window?.Close();
         showSignal?.Dispose();
         Log.Write("Exited");

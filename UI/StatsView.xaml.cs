@@ -113,8 +113,5 @@ public partial class StatsView : UserControl
     static TimeSpan Sum(IEnumerable<PlaySession> list) =>
         TimeSpan.FromSeconds(list.Sum(s => s.Duration.TotalSeconds));
 
-    static string Format(TimeSpan t) =>
-        t.TotalMinutes < 1 ? "< 1 min"
-        : t.TotalHours < 1 ? $"{(int)t.TotalMinutes} min"
-        : $"{(int)t.TotalHours} h {t.Minutes} min";
+    static string Format(TimeSpan t) => SessionTracker.Format(t);
 }
