@@ -27,6 +27,8 @@
     <SolidColorBrush x:Key="Inverse" Color="#16181C" />
     <SolidColorBrush x:Key="InverseText" Color="#FFFFFF" />
     <SolidColorBrush x:Key="Monogram" Color="#8A9099" />
+    <SolidColorBrush x:Key="CloseHoverBg" Color="#D9363E" />
+    <SolidColorBrush x:Key="ClosePressedBg" Color="#B82E35" />
     <DrawingBrush x:Key="DimmedStripes" TileMode="Tile" Viewport="0,0,12,12" ViewportUnits="Absolute">
         <DrawingBrush.Drawing>
             <DrawingGroup>
