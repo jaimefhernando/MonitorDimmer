@@ -5,6 +5,10 @@ monitor is dimmed with a black, click-through overlay; when it closes, they fade
 
 Successor to the `AutoDimmer.ahk` / `OverlayDimmer.ahk` AutoHotkey scripts; no AutoHotkey needed.
 
+**Download:** `MonitorDimmer-win-Setup.exe` from the
+[latest release](https://github.com/jaimefhernando/MonitorDimmer/releases/latest). It installs for
+your user only (no admin rights) and keeps itself up to date. Windows 10 or 11, 64-bit.
+
 ## Features
 
 - **Three triggers:** a watched app is fullscreen, any app is fullscreen, or a watched app is open at all.
@@ -49,10 +53,11 @@ Installing and updating use [Velopack](https://velopack.io). The `vpk` packaging
 local .NET tool of this repository (`.config/dotnet-tools.json`).
 
 ```
-.\scripts\release.ps1 -Version 0.2.2
+.\scripts\release.ps1 -Version 0.2.3 -Publish
 ```
 
-writes to `releases\`:
+builds the release and publishes it on GitHub (using the `gh` CLI login); without `-Publish` it
+only builds. Either way it writes to `releases\`:
 
 - `MonitorDimmer-win-Setup.exe`: the installer. Per user, no admin rights; Start menu and
   desktop shortcuts and an entry in Windows' installed apps.
@@ -62,8 +67,8 @@ writes to `releases\`:
 
 The installed app checks for updates 20 seconds after it starts and once a day, downloads them in
 the background and installs them on the next restart (or right away with "Restart and update").
-Where it looks is `Updater.DefaultSource` (e.g. a GitHub repository whose releases hold the files
-above), or the `UpdateSource` setting in `settings.json`, which can be a URL or a folder.
+It looks at this repository's GitHub releases (`Updater.DefaultSource`); the `UpdateSource`
+setting in `settings.json` overrides that for one PC, e.g. with a local `releases` folder.
 
 The installer is not code-signed, so Windows SmartScreen warns the first time it is run.
 

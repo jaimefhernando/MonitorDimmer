@@ -30,6 +30,7 @@ try {
         --packId MonitorDimmer `
         --packVersion $Version `
         --packTitle 'Monitor Dimmer' `
+        --runtime win-x64 `
         --packDir $publishDir `
         --mainExe MonitorDimmer.exe `
         --icon (Join-Path $root 'assets\app.ico') `
