@@ -14,6 +14,7 @@ public sealed class Updater
     public const string DefaultSource = "https://github.com/jaimefhernando/MonitorDimmer";
 
     readonly AppSettings settings;
+    readonly object busyGate = new();
     UpdateInfo? downloaded;
 
     public Updater(AppSettings settings) => this.settings = settings;
@@ -34,10 +35,16 @@ public sealed class Updater
     /// <param name="userAsked">From the "Check now" button: report "up to date" as well.</param>
     public async Task CheckAsync(bool userAsked)
     {
-        if (Busy || downloaded != null) return;
+        lock (busyGate)
+        {
+            if (Busy || downloaded != null) return;
+            Busy = true;
+        }
         if (Source.Length == 0)
         {
             SetStatus(userAsked ? "Updates are not set up for this copy yet." : "");
+            Busy = false;
+            StateChanged?.Invoke();
             return;
         }
 
@@ -45,10 +52,11 @@ public sealed class Updater
         if (!manager.IsInstalled)
         {
             SetStatus(userAsked ? "Updates work in the installed app; this copy runs without installing." : "");
+            Busy = false;
+            StateChanged?.Invoke();
             return;
         }
 
-        Busy = true;
         try
         {
             SetStatus("Checking for updates…");

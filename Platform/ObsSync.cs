@@ -74,7 +74,7 @@ internal sealed class ObsSync : IDisposable
             catch (Exception ex)
             {
                 SetState(false, "OBS unavailable");
-                Log.Write("OBS sync: " + ex.GetType().Name);
+                Log.Write($"OBS sync: {ex.GetType().Name}: {ex.Message}");
                 try { await Task.Delay(TimeSpan.FromSeconds(8), token); }
                 catch (OperationCanceledException) { break; }
             }
@@ -88,9 +88,11 @@ internal sealed class ObsSync : IDisposable
     {
         string id = Guid.NewGuid().ToString("N");
         await SendJson(socket, new { op = 6, d = new { requestType, requestId = id } }, token);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+        timeout.CancelAfter(TimeSpan.FromSeconds(10));
         while (true)
         {
-            using var message = await ReceiveJson(socket, token);
+            using var message = await ReceiveJson(socket, timeout.Token);
             var root = message.RootElement;
             if (root.GetProperty("op").GetInt32() != 7) continue;
             var data = root.GetProperty("d");

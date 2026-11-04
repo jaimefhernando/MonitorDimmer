@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     readonly ListCollectionView connectedMonitors;
     bool capturingHotkey;
     bool loadingObsPassword = true;
+    Updater updater = null!;
 
     public MainWindow(AppSettings settings, DimController controller)
     {
@@ -59,7 +60,7 @@ public partial class MainWindow : Window
         Home.Init(settings, controller, OpenProfile, () => Nav.SelectedItem = StatsTab);
         Profiles.Init(settings, controller);
         Stats.Init(controller.Sessions);
-        controller.Brightness.SupportChanged += () => Dispatcher.BeginInvoke(new Action(ShowBrightnessSupport));
+        controller.Brightness.SupportChanged += OnBrightnessSupportChanged;
         Swatches.ItemsSource = SwatchColors;
         WatchedEditor.Items = settings.WatchedApps;
         ExceptionEditor.Items = settings.ExceptionApps;
@@ -75,11 +76,11 @@ public partial class MainWindow : Window
         controller.StateChanged += UpdateStatus;
         settings.Changed += OnSettingChanged;
         ThemeManager.Changed += UpdateStatus;
-        Activated += (_, _) => RefreshDevices();
+        Activated += OnWindowActivated;
 
-        var updater = ((App)Application.Current).Updater;
+        updater = ((App)Application.Current).Updater;
         VersionText.Text = $"Shadeplay {Updater.CurrentVersion}";
-        updater.StateChanged += () => Dispatcher.BeginInvoke(new Action(ShowUpdateState));
+        updater.StateChanged += OnUpdaterStateChanged;
         ShowUpdateState();
 
         UpdateStatus();
@@ -192,6 +193,10 @@ public partial class MainWindow : Window
                 ? $"OpenRGB SDK server found on port {settings.OpenRgbPort}."
                 : $"No OpenRGB SDK server on port {settings.OpenRgbPort}. Start OpenRGB and its SDK server.";
     }
+
+    void OnBrightnessSupportChanged() => Dispatcher.BeginInvoke(new Action(ShowBrightnessSupport));
+    void OnWindowActivated(object? sender, EventArgs e) => RefreshDevices();
+    void OnUpdaterStateChanged() => Dispatcher.BeginInvoke(new Action(ShowUpdateState));
 
     void ShowBrightnessSupport()
     {
@@ -429,28 +434,7 @@ public partial class MainWindow : Window
     /// A maximized WindowChrome window hangs past the screen edge by the resize frame,
     /// so pad it back in, drop the outline and swap the maximize/restore icon.
     /// </summary>
-    void UpdateChromeForState()
-    {
-        bool maximized = WindowState == WindowState.Maximized;
-        MaximizeIcon.Visibility = maximized ? Visibility.Collapsed : Visibility.Visible;
-        RestoreIcon.Visibility = maximized ? Visibility.Visible : Visibility.Collapsed;
-        MaximizeButton.ToolTip = maximized ? "Restore" : "Maximize";
-        System.Windows.Automation.AutomationProperties.SetName(MaximizeButton, maximized ? "Restore" : "Maximize");
-
-        if (!maximized)
-        {
-            RootBorder.BorderThickness = new Thickness(1);
-            RootBorder.Margin = new Thickness(0);
-            return;
-        }
-        var dpi = VisualTreeHelper.GetDpi(this);
-        uint dpiValue = (uint)Math.Round(96 * dpi.DpiScaleX);
-        int px = Interop.Native.GetSystemMetricsForDpi(Interop.Native.SM_CXSIZEFRAME, dpiValue)
-               + Interop.Native.GetSystemMetricsForDpi(Interop.Native.SM_CXPADDEDBORDER, dpiValue);
-        double inset = px / dpi.DpiScaleX;
-        RootBorder.BorderThickness = new Thickness(0);
-        RootBorder.Margin = new Thickness(inset);
-    }
+    void UpdateChromeForState() => WindowChromeHelper.Apply(this, RootBorder, MaximizeIcon, RestoreIcon, MaximizeButton);
 
     protected override void OnClosing(CancelEventArgs e)
     {
@@ -465,9 +449,17 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        Home.Detach();
+        Profiles.Detach();
+        Stats.Detach();
         controller.StateChanged -= UpdateStatus;
+        controller.StateChanged -= UpdateObsStatus;
+        controller.StateChanged -= UpdateStreamlabsStatus;
+        controller.Brightness.SupportChanged -= OnBrightnessSupportChanged;
         settings.Changed -= OnSettingChanged;
         ThemeManager.Changed -= UpdateStatus;
+        Activated -= OnWindowActivated;
+        updater.StateChanged -= OnUpdaterStateChanged;
         base.OnClosed(e);
     }
 }

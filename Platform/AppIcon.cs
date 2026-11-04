@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -38,8 +39,17 @@ internal static class AppIcon
             using (var stand = new SolidBrush(System.Drawing.Color.FromArgb(255, 32, 36, 44)))
                 g.FillRectangle(stand, 7 * s, 24 * s, 8 * s, 3 * s);
         }
-        return Icon.FromHandle(bmp.GetHicon());
+        IntPtr hicon = bmp.GetHicon();
+        var result = Icon.FromHandle(hicon);
+        // Icon.FromHandle wraps the handle without owning it; free it once the Icon is done with it.
+        // The Icon keeps no copy of the handle's data, so it is safe to free immediately.
+        DestroyIcon(hicon);
+        return result;
     }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    static extern bool DestroyIcon(IntPtr hicon);
 
     static void FillRounded(Graphics g, System.Drawing.Brush brush, RectangleF r, float radius)
     {

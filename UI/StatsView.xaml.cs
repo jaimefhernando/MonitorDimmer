@@ -40,8 +40,16 @@ public partial class StatsView : UserControl
     public void Init(SessionTracker tracker)
     {
         sessions = tracker;
-        sessions.HistoryChanged += () => Dispatcher.BeginInvoke(new Action(Refresh));
+        sessions.HistoryChanged += OnHistoryChanged;
         Refresh();
+    }
+
+    void OnHistoryChanged() => Dispatcher.BeginInvoke(new Action(Refresh));
+
+    /// <summary>Releases event subscriptions. Called by the host window on close.</summary>
+    public void Detach()
+    {
+        if (sessions != null) sessions.HistoryChanged -= OnHistoryChanged;
     }
 
     void Filter_Changed(object sender, RoutedEventArgs e) => Refresh();

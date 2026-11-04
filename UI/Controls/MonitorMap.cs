@@ -30,14 +30,11 @@ public class MonitorMap : FrameworkElement
 
     public MonitorMap()
     {
-        // Colors come from the theme, which can change while the window is open
-        ThemeManager.Changed += InvalidateVisual;
+        // Colors come from the theme, which can change while the window is open.
+        // Subscribe in Loaded (not the constructor) so an instance that is never
+        // loaded does not leak a ThemeManager handler.
+        Loaded += (_, _) => ThemeManager.Changed += InvalidateVisual;
         Unloaded += (_, _) => ThemeManager.Changed -= InvalidateVisual;
-        Loaded += (_, _) =>
-        {
-            ThemeManager.Changed -= InvalidateVisual;
-            ThemeManager.Changed += InvalidateVisual;
-        };
     }
 
     protected override void OnRender(DrawingContext dc)

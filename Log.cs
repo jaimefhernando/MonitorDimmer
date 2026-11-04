@@ -15,9 +15,26 @@ internal static class Log
             lock (Gate)
             {
                 Directory.CreateDirectory(AppSettings.Folder);
-                // Keep the log small; it is only for troubleshooting
+                // Keep the log small but retain recent history: trim to the last 256 KB
+                // rather than wiping everything when it grows past 512 KB.
                 var info = new FileInfo(FilePath);
-                if (info.Exists && info.Length > 512 * 1024) info.Delete();
+                if (info.Exists && info.Length > 512 * 1024)
+                {
+                    try
+                    {
+                        byte[] all = File.ReadAllBytes(FilePath);
+                        int keep = 256 * 1024;
+                        int start = all.Length - keep;
+                        // Start at the next newline so we don't cut a line in half
+                        while (start < all.Length && all[start] != (byte)'\n') start++;
+                        if (start < all.Length) start++;
+                        File.WriteAllBytes(FilePath, all.AsSpan(start).ToArray());
+                    }
+                    catch (Exception)
+                    {
+                        try { info.Delete(); } catch (Exception) { }
+                    }
+                }
                 File.AppendAllText(FilePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
             }
         }

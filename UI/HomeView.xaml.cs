@@ -46,14 +46,30 @@ public partial class HomeView : UserControl
         this.controller = controller;
         this.openProfile = openProfile;
         this.openStats = openStats;
-        controller.StateChanged += () => Dispatcher.BeginInvoke(new Action(Refresh));
-        controller.Sessions.HistoryChanged += () => Dispatcher.BeginInvoke(new Action(RefreshStats));
-        settings.Changed += name =>
-        {
-            if (name == nameof(AppSettings.Enabled)) Refresh();
-        };
+        controller.StateChanged += OnControllerStateChanged;
+        controller.Sessions.HistoryChanged += OnHistoryChanged;
+        settings.Changed += OnSettingsChanged;
         Refresh();
         RefreshStats();
+    }
+
+    void OnControllerStateChanged() => Dispatcher.BeginInvoke(new Action(Refresh));
+    void OnHistoryChanged() => Dispatcher.BeginInvoke(new Action(RefreshStats));
+    void OnSettingsChanged(string? name)
+    {
+        if (name == nameof(AppSettings.Enabled)) Refresh();
+    }
+
+    /// <summary>Releases event subscriptions. Called by the host window on close.</summary>
+    public void Detach()
+    {
+        if (controller != null)
+        {
+            controller.StateChanged -= OnControllerStateChanged;
+            controller.Sessions.HistoryChanged -= OnHistoryChanged;
+        }
+        if (settings != null) settings.Changed -= OnSettingsChanged;
+        clock.Stop();
     }
 
     void Refresh()

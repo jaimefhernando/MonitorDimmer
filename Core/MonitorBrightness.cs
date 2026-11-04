@@ -68,7 +68,7 @@ public sealed class MonitorBrightness : IDisposable
     readonly Dictionary<string, ExtraLevels> extraOriginals = new();
 
     /// <summary>Slower, gentler commands for monitors that hang on quick DDC/CI changes.</summary>
-    public bool OsdSafe { get; set; }
+    public volatile bool OsdSafe;
 
     TimeSpan CommandGap => TimeSpan.FromMilliseconds(OsdSafe ? 400 : 100);
     int FadeSteps => OsdSafe ? 10 : 4;

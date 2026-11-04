@@ -35,6 +35,11 @@ internal sealed class Notifications
         var now = DateTime.Now;
         if (lastDimNotice.TryGetValue(exe, out var last) && now - last < DimCooldown) return;
         lastDimNotice[exe] = now;
+        // Prune entries outside the cooldown so the map doesn't grow without bound
+        List<string> stale = new();
+        foreach (var (key, value) in lastDimNotice)
+            if (now - value >= DimCooldown) stale.Add(key);
+        foreach (var key in stale) lastDimNotice.Remove(key);
         tray.Notify($"Dimming for {name}", "Your other monitors are dimmed. Right-click the tray icon to pause.");
     }
 

@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -46,9 +47,17 @@ public partial class ProfilesView : UserControl
         this.settings = settings;
         this.controller = controller;
         ProfileList.ItemsSource = settings.Profiles;
-        settings.Profiles.CollectionChanged += (_, _) => UpdateEmptyState();
+        settings.Profiles.CollectionChanged += OnProfilesChanged;
         if (settings.Profiles.Count > 0) ProfileList.SelectedIndex = 0;
         UpdateEmptyState();
+    }
+
+    void OnProfilesChanged(object? sender, NotifyCollectionChangedEventArgs e) => UpdateEmptyState();
+
+    /// <summary>Releases event subscriptions. Called by the host window on close.</summary>
+    public void Detach()
+    {
+        if (settings != null) settings.Profiles.CollectionChanged -= OnProfilesChanged;
     }
 
     /// <summary>Rebuilds the monitor checkboxes, e.g. after monitors were plugged in.</summary>

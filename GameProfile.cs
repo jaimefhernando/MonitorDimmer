@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 
 namespace Shadeplay;
 
@@ -55,7 +56,7 @@ public sealed class GameProfile : ObservableObject
 
     public GameProfile()
     {
-        keepBrightMonitorIds.CollectionChanged += (_, _) => OnPropertyChanged(nameof(KeepBrightMonitorIds));
+        keepBrightMonitorIds.CollectionChanged += OnKeepBrightChanged;
     }
 
     /// <summary>Normalized program name, e.g. "eldenring.exe".</summary>
@@ -75,11 +76,18 @@ public sealed class GameProfile : ObservableObject
         get => keepBrightMonitorIds;
         set
         {
+            ObservableCollection<string>? old = keepBrightMonitorIds;
             keepBrightMonitorIds = value ?? new();
-            keepBrightMonitorIds.CollectionChanged += (_, _) => OnPropertyChanged(nameof(KeepBrightMonitorIds));
+            if (old != keepBrightMonitorIds)
+            {
+                old.CollectionChanged -= OnKeepBrightChanged;
+                keepBrightMonitorIds.CollectionChanged += OnKeepBrightChanged;
+            }
             OnPropertyChanged();
         }
     }
+
+    void OnKeepBrightChanged(object? sender, NotifyCollectionChangedEventArgs e) => OnPropertyChanged(nameof(KeepBrightMonitorIds));
 
     public ProfileLighting Lighting { get => lighting; set => Set(ref lighting, value); }
     public string RgbColor { get => rgbColor; set => Set(ref rgbColor, value ?? "#FFA020"); }

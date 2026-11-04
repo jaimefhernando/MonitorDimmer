@@ -69,9 +69,22 @@ public sealed class AppSettings : ObservableObject
         string old = Path.Combine(appData, "MonitorDimmer");
         try
         {
-            if (!Directory.Exists(folder) && Directory.Exists(old)) Directory.Move(old, folder);
+            if (!Directory.Exists(folder) && Directory.Exists(old))
+            {
+                try { Directory.Move(old, folder); }
+                catch (Exception moveEx)
+                {
+                    Log.Write("Settings folder move failed, copying file-by-file: " + moveEx.Message);
+                    Directory.CreateDirectory(folder);
+                    foreach (string file in Directory.EnumerateFiles(old))
+                    {
+                        try { File.Copy(file, Path.Combine(folder, Path.GetFileName(file)), true); }
+                        catch (Exception copyEx) { Log.Write("Could not copy " + Path.GetFileName(file) + ": " + copyEx.Message); }
+                    }
+                }
+            }
         }
-        catch { }
+        catch (Exception ex) { Log.Write("Settings folder migration error: " + ex.Message); }
         return folder;
     }
 
@@ -102,6 +115,9 @@ public sealed class AppSettings : ObservableObject
     };
 
     bool enabled = true;
+
+    /// <summary>Settings format version. Old files without this field load as 0; bump when the schema changes.</summary>
+    public int SchemaVersion { get; set; } = 1;
     DimMode mode = DimMode.FullscreenWatched;
     int strength = 80;
     int fadeMs = 400;
@@ -390,6 +406,7 @@ public sealed class AppSettings : ObservableObject
         HookItems(e.NewItems);
         Changed?.Invoke(sender == watchedApps ? nameof(WatchedApps)
             : sender == exceptionApps ? nameof(ExceptionApps)
+            : sender == peekApps ? nameof(PeekApps)
             : sender == profiles ? nameof(Profiles)
             : sender == closeApps ? nameof(CloseApps) : nameof(Monitors));
     }

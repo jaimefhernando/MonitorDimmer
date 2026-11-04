@@ -95,7 +95,7 @@ internal sealed class StreamlabsSync : IDisposable
             catch (Exception ex)
             {
                 SetState(false, "Streamlabs unavailable");
-                Log.Write("Streamlabs sync: " + ex.GetType().Name);
+                Log.Write($"Streamlabs sync: {ex.GetType().Name}: {ex.Message}");
                 try { await Task.Delay(TimeSpan.FromSeconds(8), token); }
                 catch (OperationCanceledException) { break; }
             }

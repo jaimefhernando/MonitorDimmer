@@ -224,27 +224,7 @@ public partial class WelcomeWindow : Window
         UpdateChromeForState();
     }
 
-    void UpdateChromeForState()
-    {
-        bool maximized = WindowState == WindowState.Maximized;
-        MaximizeIcon.Visibility = maximized ? Visibility.Collapsed : Visibility.Visible;
-        RestoreIcon.Visibility = maximized ? Visibility.Visible : Visibility.Collapsed;
-        MaximizeButton.ToolTip = maximized ? "Restore" : "Maximize";
-        System.Windows.Automation.AutomationProperties.SetName(MaximizeButton, maximized ? "Restore" : "Maximize");
-
-        if (!maximized)
-        {
-            RootBorder.BorderThickness = new Thickness(1);
-            RootBorder.Margin = new Thickness(0);
-            return;
-        }
-        var dpi = VisualTreeHelper.GetDpi(this);
-        uint dpiValue = (uint)Math.Round(96 * dpi.DpiScaleX);
-        int px = Interop.Native.GetSystemMetricsForDpi(Interop.Native.SM_CXSIZEFRAME, dpiValue)
-               + Interop.Native.GetSystemMetricsForDpi(Interop.Native.SM_CXPADDEDBORDER, dpiValue);
-        RootBorder.BorderThickness = new Thickness(0);
-        RootBorder.Margin = new Thickness(px / dpi.DpiScaleX);
-    }
+    void UpdateChromeForState() => WindowChromeHelper.Apply(this, RootBorder, MaximizeIcon, RestoreIcon, MaximizeButton);
 
     void Apply_Click(object sender, RoutedEventArgs e)
     {
