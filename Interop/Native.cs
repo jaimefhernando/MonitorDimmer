@@ -121,6 +121,9 @@ internal static class Native
     public static extern bool GetCursorPos(out POINT point);
 
     [DllImport("user32.dll")]
+    public static extern IntPtr WindowFromPoint(POINT point);
+
+    [DllImport("user32.dll")]
     public static extern IntPtr MonitorFromPoint(POINT point, uint flags);
 
     [DllImport("user32.dll")]

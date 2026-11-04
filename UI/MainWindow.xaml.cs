@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     readonly DimController controller;
     readonly ListCollectionView connectedMonitors;
     bool capturingHotkey;
+    bool loadingObsPassword = true;
 
     public MainWindow(AppSettings settings, DimController controller)
     {
@@ -46,6 +47,12 @@ public partial class MainWindow : Window
         this.settings = settings;
         this.controller = controller;
         DataContext = settings;
+        ObsPasswordBox.Password = settings.ObsPassword;
+        loadingObsPassword = false;
+        controller.StateChanged += UpdateObsStatus;
+        controller.StateChanged += UpdateStreamlabsStatus;
+        UpdateObsStatus();
+        UpdateStreamlabsStatus();
 
         Icon = AppIcon.ImageSource;
         ModeBox.ItemsSource = Modes;
@@ -56,6 +63,7 @@ public partial class MainWindow : Window
         Swatches.ItemsSource = SwatchColors;
         WatchedEditor.Items = settings.WatchedApps;
         ExceptionEditor.Items = settings.ExceptionApps;
+        PeekEditor.Items = settings.PeekApps;
         CloseAppsEditor.Items = settings.CloseApps;
 
         connectedMonitors = new ListCollectionView(settings.Monitors)
@@ -250,6 +258,23 @@ public partial class MainWindow : Window
     }
 
     // --- Shortcut capture ---
+
+    void ObsPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (!loadingObsPassword) settings.ObsPassword = ObsPasswordBox.Password;
+    }
+
+    void UpdateObsStatus()
+    {
+        if (ObsStatusText == null) return;
+        ObsStatusText.Text = controller.ObsStatus;
+    }
+
+    void UpdateStreamlabsStatus()
+    {
+        if (StreamlabsStatusText == null) return;
+        StreamlabsStatusText.Text = controller.StreamlabsStatus;
+    }
 
     void ShowHotkey()
     {

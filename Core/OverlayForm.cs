@@ -17,6 +17,7 @@ internal sealed class OverlayForm : Form
     RECT bounds;
     bool captureExcluded;
     string holesKey = "";
+    Rectangle? onlyRegion;
 
     // Burn-in protection: a faint lighter band that creeps across the overlay
     readonly System.Windows.Forms.Timer driftTimer = new() { Interval = 30_000 };
@@ -121,6 +122,17 @@ internal sealed class OverlayForm : Form
         e.Graphics.FillRectangle(brush, new Rectangle(x, 0, band, ClientSize.Height));
     }
 
+    /// <summary>Restricts this overlay to one screen-space rectangle, for a notification peek.</summary>
+    public void SetOnlyRegion(RECT? rect)
+    {
+        var next = rect is RECT r
+            ? new Rectangle(r.Left - bounds.Left, r.Top - bounds.Top, r.Width, r.Height)
+            : (Rectangle?)null;
+        if (next == onlyRegion) return;
+        onlyRegion = next;
+        Region = next is Rectangle area ? new Region(area) : null;
+    }
+
     public void SetCaptureExcluded(bool excluded)
     {
         if (excluded == captureExcluded) return;
@@ -144,6 +156,7 @@ internal sealed class OverlayForm : Form
         string key = string.Join(";", holes);
         if (key == holesKey) return;
         holesKey = key;
+        if (onlyRegion != null) return;
         var old = Region;
         if (holes.Count == 0)
         {

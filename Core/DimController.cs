@@ -28,6 +28,9 @@ public sealed class DimController : IDisposable
     readonly DispatcherTimer timer;
     readonly DispatcherTimer eventDelay;
     readonly Dictionary<string, OverlayForm> overlays = new();
+    readonly Dictionary<IntPtr, OverlayForm> peekOverlays = new();
+    readonly Dictionary<IntPtr, DateTime> peekUntil = new();
+    readonly Dictionary<IntPtr, string> windowTitles = new();
     readonly Dictionary<string, (MonitorInfo Monitor, int Strength, int Extras)> brightnessDimmed = new();
     readonly ActionRunner actions = new();
     readonly MouseLock mouseLock = new();
@@ -48,6 +51,9 @@ public sealed class DimController : IDisposable
     readonly DateTime startedAt = DateTime.Now;
     HashSet<string> idleCandidates = new();
     List<MonitorInfo> lastMonitors = new();
+    List<WindowInfo> lastWindows = new();
+    IntPtr hoverWindow;
+    string activeZoneKey = "";
 
     DateTime? pausedUntil;
     bool? nightOverride;     // night mode switched on/off from the tray, until the schedule next changes
@@ -92,6 +98,29 @@ public sealed class DimController : IDisposable
     public bool NightOn { get; private set; }
     public string Status { get; private set; } = "Starting";
     public bool IsDimming => sessionKey != null;
+    public bool ObsActive => obsActive;
+    public string ObsStatus => obsStatus;
+    bool obsActive;
+    string obsStatus = "OBS disconnected";
+    bool streamlabsActive;
+    string streamlabsStatus = "Streamlabs disconnected";
+    public bool StreamlabsActive => streamlabsActive;
+    public string StreamlabsStatus => streamlabsStatus;
+    public bool LiveActive => obsActive || streamlabsActive;
+
+    public void SetObsState(bool active, string status)
+    {
+        obsActive = active;
+        obsStatus = status;
+        Update();
+    }
+
+    public void SetStreamlabsState(bool active, string status)
+    {
+        streamlabsActive = active;
+        streamlabsStatus = status;
+        Update();
+    }
 
     public MonitorBrightness Brightness { get; } = new();
     public SessionTracker Sessions { get; } = new();
@@ -175,18 +204,30 @@ public sealed class DimController : IDisposable
 
     void OnActivityTick()
     {
-        if (!settings.IdleDimEnabled)
-        {
-            if (idleCandidates.Count > 0) Update();
-            return;
-        }
+        bool changed = false;
         if (Native.GetCursorPos(out var pt))
         {
             IntPtr hMonitor = Native.MonitorFromPoint(pt, Native.MONITOR_DEFAULTTONEAREST);
             var m = lastMonitors.FirstOrDefault(x => x.Handle == hMonitor);
             if (m != null) lastActive[m.Id] = DateTime.Now;
+
+            if (settings.ZoneLayout != ZoneLayout.Off)
+            {
+                var zoneMonitor = lastMonitors.FirstOrDefault(x => x.Handle == hMonitor);
+                string zone = zoneMonitor == null ? "" : ZoneKey(zoneMonitor, pt);
+                if (zone != activeZoneKey) { activeZoneKey = zone; changed = true; }
+            }
+
+            if (settings.FocusEnabled && settings.FocusByHover)
+            {
+                IntPtr underCursor = lastWindows.FirstOrDefault(w =>
+                    pt.X >= w.Bounds.Left && pt.X < w.Bounds.Right && pt.Y >= w.Bounds.Top && pt.Y < w.Bounds.Bottom)?.Handle ?? IntPtr.Zero;
+                if (underCursor == IntPtr.Zero || !lastWindows.Any(w => w.Handle == underCursor)) underCursor = IntPtr.Zero;
+                if (underCursor != hoverWindow) { hoverWindow = underCursor; changed = true; }
+            }
         }
-        if (!IdleCandidates(lastMonitors).SetEquals(idleCandidates)) Update();
+        if (settings.IdleDimEnabled && !IdleCandidates(lastMonitors).SetEquals(idleCandidates)) changed = true;
+        if (changed) Update();
     }
 
     /// <summary>Monitors the mouse and the active window have stayed away from long enough.</summary>
@@ -226,6 +267,18 @@ public sealed class DimController : IDisposable
         var exceptions = NormalizedSet(settings.ExceptionApps);
         var watched = NormalizedSet(settings.WatchedApps);
         lastMonitors = monitors;
+        lastWindows = windows;
+        var peekApps = NormalizedSet(settings.PeekApps);
+        foreach (var w in windows)
+        {
+            if (windowTitles.TryGetValue(w.Handle, out var oldTitle) && oldTitle != w.Title && peekApps.Contains(w.ProcessName))
+                peekUntil[w.Handle] = DateTime.UtcNow.AddSeconds(6);
+            windowTitles[w.Handle] = w.Title;
+        }
+        foreach (var handle in windowTitles.Keys.Except(windows.Select(w => w.Handle)).ToList()) windowTitles.Remove(handle);
+        foreach (var handle in peekUntil.Where(p => p.Value <= DateTime.UtcNow || !windows.Any(w => w.Handle == p.Key))
+                     .Select(p => p.Key).ToList()) peekUntil.Remove(handle);
+        var peeking = windows.Where(w => peekUntil.ContainsKey(w.Handle)).ToList();
 
         // 1. What keeps monitors bright, and which app the session is for
         var bright = new HashSet<string>();
@@ -326,7 +379,9 @@ public sealed class DimController : IDisposable
         var mediaPlayers = settings.MediaOverride ? MediaPlayers : new HashSet<string>();
         WindowInfo? focused = null;
         if (settings.FocusEnabled && plan == null && active)
-            focused = windows.FirstOrDefault(w => w.Handle == lastAppWindow);
+            focused = settings.FocusByHover
+                ? windows.FirstOrDefault(w => w.Handle == hoverWindow)
+                : windows.FirstOrDefault(w => w.Handle == lastAppWindow);
 
         var overlayIds = new HashSet<string>();
         var brightnessIds = new HashSet<string>();
@@ -345,7 +400,8 @@ public sealed class DimController : IDisposable
             if (isolated != null)
             {
                 bool hasWindow = isolated.Bounds.IntersectsWith(monitor.Bounds);
-                bool ddc = !hasWindow && plan!.Method != DimMethod.Overlay && Brightness.GetSupport(monitor.Id)?.Supported == true;
+                bool ddc = !hasWindow && sessionPlan?.Method is not DimMethod.Overlay
+                    && Brightness.GetSupport(monitor.Id)?.Supported == true;
                 if (ddc)
                 {
                     brightnessIds.Add(monitor.Id);
@@ -359,6 +415,16 @@ public sealed class DimController : IDisposable
                 var holes = hasWindow ? new List<RECT> { isolated.Bounds.Intersect(monitor.Bounds) } : new List<RECT>();
                 ShowOverlay(monitor, Black, 1, holes);
                 states.Add(new MonitorState(monitor, MonitorDimKind.Dimmed, 100, ddc));
+            }
+            else if (plan != null && bright.Contains(monitor.Id) && settings.ZoneLayout != ZoneLayout.Off
+                     && (triggerMonitor?.Id == monitor.Id || manualBrightId == monitor.Id))
+            {
+                RECT activeZone = ZoneBounds(monitor, GetCursorPoint());
+                var holes = KeepLitHoles(windows, monitor, exceptions, mediaPlayers);
+                holes.Add(activeZone);
+                overlayIds.Add(monitor.Id);
+                ShowOverlay(monitor, Black, settings.Strength / 100.0, holes);
+                states.Add(new MonitorState(monitor, kind, settings.Strength, false));
             }
             else if (plan != null && !bright.Contains(monitor.Id))
             {
@@ -381,7 +447,7 @@ public sealed class DimController : IDisposable
                 if (overlay)
                 {
                     overlayIds.Add(monitor.Id);
-                    ShowOverlay(monitor, Black, strength / 100.0, KeepLitHoles(windows, monitor, exceptions, mediaPlayers));
+                    ShowOverlay(monitor, Black, strength / 100.0, KeepLitHoles(windows, monitor, exceptions, mediaPlayers).Concat(PeekRects(peeking, monitor)).ToList());
                 }
                 states.Add(new MonitorState(monitor, MonitorDimKind.Dimmed, strength, ddc));
             }
@@ -389,6 +455,7 @@ public sealed class DimController : IDisposable
             {
                 overlayIds.Add(monitor.Id);
                 var holes = KeepLitHoles(windows, monitor, exceptions, mediaPlayers);
+                holes.AddRange(PeekRects(peeking, monitor));
                 if (focused.Bounds.IntersectsWith(monitor.Bounds)) holes.Add(focused.Bounds.Intersect(monitor.Bounds));
                 ShowOverlay(monitor, Black, settings.FocusStrength / 100.0, holes);
                 states.Add(new MonitorState(monitor, MonitorDimKind.Focus, settings.FocusStrength, false));
@@ -396,7 +463,7 @@ public sealed class DimController : IDisposable
             else if (idle.Contains(monitor.Id))
             {
                 overlayIds.Add(monitor.Id);
-                ShowOverlay(monitor, Black, settings.IdleStrength / 100.0, KeepLitHoles(windows, monitor, exceptions, mediaPlayers));
+                ShowOverlay(monitor, Black, settings.IdleStrength / 100.0, KeepLitHoles(windows, monitor, exceptions, mediaPlayers).Concat(PeekRects(peeking, monitor)).ToList());
                 states.Add(new MonitorState(monitor, MonitorDimKind.Idle, settings.IdleStrength, false));
             }
             else if (NightOn && (settings.NightAllMonitors || !monitor.IsPrimary) && !triggerIds.Contains(monitor.Id))
@@ -421,15 +488,48 @@ public sealed class DimController : IDisposable
 
         // 4. Keep the cursor on the game's monitor while the fullscreen game is in focus;
         //    Alt+Tab, the Windows key or any other window taking focus frees it
-        bool lockCursor = plan?.MouseLock == true && trigger != null && triggerMonitor != null
+        bool liveLock = settings.LiveLockMouse && LiveActive;
+        IntPtr liveWindow = foreground;
+        if (liveLock)
+        {
+            Native.GetWindowThreadProcessId(liveWindow, out uint livePid);
+            if (livePid == Environment.ProcessId) liveWindow = lastAppWindow;
+        }
+        MonitorInfo? liveMonitor = liveLock && liveWindow != IntPtr.Zero
+            ? byHandle.GetValueOrDefault(Native.MonitorFromWindow(liveWindow, Native.MONITOR_DEFAULTTONEAREST)) : null;
+        bool gameLock = plan?.MouseLock == true && trigger != null && triggerMonitor != null
             && trigger.Handle == foreground && IsFullscreen(trigger, triggerMonitor);
-        mouseLock.Apply(lockCursor ? triggerMonitor!.Bounds : null);
+        bool lockCursor = gameLock || (liveMonitor != null && foreground != IntPtr.Zero);
+        RECT? lockArea = gameLock ? triggerMonitor!.Bounds : liveMonitor?.Bounds;
+        mouseLock.Apply(lockCursor ? lockArea : null);
 
         foreach (var (id, dimmed) in brightnessDimmed.ToList())
         {
             if (brightnessIds.Contains(id)) continue;
             Brightness.Restore(monitors.FirstOrDefault(m => m.Id == id) ?? dimmed.Monitor);
             brightnessDimmed.Remove(id);
+        }
+
+        var activePeek = peeking.Where(w => overlays.ContainsKey(lastMonitors.FirstOrDefault(m => m.Handle == w.Monitor)?.Id ?? ""))
+            .ToDictionary(w => w.Handle, w => w);
+        foreach (var (handle, w) in activePeek)
+        {
+            var monitor = lastMonitors.First(m => m.Handle == w.Monitor);
+            if (!peekOverlays.TryGetValue(handle, out var peek) || peek.IsDisposed)
+                peekOverlays[handle] = peek = new OverlayForm(monitor.Bounds, settings.HideFromCapture);
+            peek.Place(monitor.Bounds);
+            peek.BackColor = Black;
+            peek.SetCaptureExcluded(settings.HideFromCapture);
+            peek.SetOnlyRegion(w.Bounds.Intersect(monitor.Bounds));
+            peek.FadeTo(0.5, Math.Min(180, settings.FadeMs));
+            peek.KeepOnTop();
+        }
+        foreach (var (handle, peek) in peekOverlays.ToList())
+        {
+            if (activePeek.ContainsKey(handle)) continue;
+            peekOverlays.Remove(handle);
+            peek.Close();
+            peek.Dispose();
         }
 
         foreach (var (id, overlay) in overlays.ToList())
@@ -455,6 +555,8 @@ public sealed class DimController : IDisposable
             if (plan.Power) extrasNow.Add("High performance power");
             if (mouseLock.IsLocked && triggerMonitor != null) extrasNow.Add($"Mouse locked to Display {triggerMonitor.Number}");
         }
+        if (settings.ObsEnabled) extrasNow.Add(obsStatus);
+        if (settings.StreamlabsEnabled) extrasNow.Add(streamlabsStatus);
         string signature = status + "|" + string.Join(";", states.Select(s => $"{s.Monitor.Id}:{s.Kind}:{s.Strength}"))
             + "|" + string.Join(";", extrasNow);
         Monitors = states;
@@ -558,14 +660,58 @@ public sealed class DimController : IDisposable
         overlay.KeepOnTop();
     }
 
-    /// <summary>Exception apps, video players and fullscreen videos stay lit on a dimmed monitor.</summary>
+    static Native.POINT GetCursorPoint() => Native.GetCursorPos(out var p) ? p : default;
+
+    string ZoneKey(MonitorInfo monitor, Native.POINT point)
+    {
+        RECT zone = ZoneBounds(monitor, point);
+        return $"{monitor.Id}:{zone.Left}:{zone.Top}";
+    }
+
+    RECT ZoneBounds(MonitorInfo monitor, Native.POINT point)
+    {
+        var b = monitor.Bounds;
+        int midX = b.Left + b.Width / 2, midY = b.Top + b.Height / 2;
+        return settings.ZoneLayout switch
+        {
+            ZoneLayout.VerticalHalves => point.X < midX ? new RECT(b.Left, b.Top, midX, b.Bottom) : new RECT(midX, b.Top, b.Right, b.Bottom),
+            ZoneLayout.HorizontalHalves => point.Y < midY ? new RECT(b.Left, b.Top, b.Right, midY) : new RECT(b.Left, midY, b.Right, b.Bottom),
+            ZoneLayout.Quadrants => new RECT(point.X < midX ? b.Left : midX, point.Y < midY ? b.Top : midY,
+                point.X < midX ? midX : b.Right, point.Y < midY ? midY : b.Bottom),
+            _ => b,
+        };
+    }
+
+    static List<RECT> PeekRects(List<WindowInfo> windows, MonitorInfo monitor) => windows
+        .Where(w => w.Bounds.IntersectsWith(monitor.Bounds))
+        .Select(w => w.Bounds.Intersect(monitor.Bounds)).ToList();
+
+    /// <summary>Exception apps and recognized media windows stay lit on a dimmed monitor.</summary>
     List<RECT> KeepLitHoles(List<WindowInfo> windows, MonitorInfo monitor, HashSet<string> exceptions, HashSet<string> media) =>
         windows
             .Where(w => w.Bounds.IntersectsWith(monitor.Bounds)
-                && (exceptions.Contains(w.ProcessName) || media.Contains(w.ProcessName)
-                    || (media.Count > 0 && w.IsFullscreenOn(monitor))))
+                && (exceptions.Contains(w.ProcessName) || IsMediaWindow(w, media)))
             .Select(w => w.Bounds.Intersect(monitor.Bounds))
             .ToList();
+
+    static readonly HashSet<string> Browsers = new()
+    {
+        "chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe", "vivaldi.exe", "arc.exe",
+    };
+
+    static readonly string[] MediaTitleHints =
+    {
+        "youtube", "netflix", "twitch", "prime video", "disney+", "plex", "crunchyroll", "paramount+",
+        "hulu", "max -", "iplayer", "video playback", "now playing",
+    };
+
+    static bool IsMediaWindow(WindowInfo w, HashSet<string> players)
+    {
+        if (players.Contains(w.ProcessName)) return true;
+        if (!Browsers.Contains(w.ProcessName) || w.Title.Length == 0) return false;
+        string title = w.Title.ToLowerInvariant();
+        return MediaTitleHints.Any(title.Contains) || title.StartsWith("▶") || title.StartsWith("⏸");
+    }
 
     /// <returns>The foreground window.</returns>
     IntPtr TrackForeground(Dictionary<IntPtr, MonitorInfo> byHandle)
@@ -604,6 +750,8 @@ public sealed class DimController : IDisposable
             overlay.Dispose();
         }
         overlays.Clear();
+        foreach (var peek in peekOverlays.Values) { peek.Close(); peek.Dispose(); }
+        peekOverlays.Clear();
         foreach (var (monitor, _, _) in brightnessDimmed.Values) Brightness.Restore(monitor);
         brightnessDimmed.Clear();
         if (sessionKey != null) EndSession();

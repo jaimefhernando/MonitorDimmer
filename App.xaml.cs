@@ -19,6 +19,8 @@ public partial class App : Application
     DimController controller = null!;
     HotkeyManager hotkeys = null!;
     HotkeyManager isolateHotkey = null!;
+    ObsSync obs = null!;
+    StreamlabsSync streamlabs = null!;
     TrayIcon tray = null!;
     MainWindow? window;
     readonly DispatcherTimer saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
@@ -58,6 +60,10 @@ public partial class App : Application
         settings = AppSettings.Load();
         ThemeManager.Apply(settings.Theme);
         controller = new DimController(settings);
+        obs = new ObsSync(settings);
+        obs.StateChanged += () => Dispatcher.BeginInvoke(new Action(() => controller.SetObsState(obs.Active, obs.Status)));
+        streamlabs = new StreamlabsSync(settings);
+        streamlabs.StateChanged += () => Dispatcher.BeginInvoke(new Action(() => controller.SetStreamlabsState(streamlabs.Active, streamlabs.Status)));
         hotkeys = new HotkeyManager();
         hotkeys.Pressed += controller.ToggleManual;
         ApplyHotkey();
@@ -126,6 +132,16 @@ public partial class App : Application
                 break;
             case nameof(AppSettings.Theme):
                 ThemeManager.Apply(settings.Theme);
+                break;
+            case nameof(AppSettings.ObsEnabled):
+            case nameof(AppSettings.ObsHost):
+            case nameof(AppSettings.ObsPort):
+            case nameof(AppSettings.ObsPasswordProtected):
+            case nameof(AppSettings.ObsPassword):
+                obs?.Reconnect();
+                break;
+            case nameof(AppSettings.StreamlabsEnabled):
+                streamlabs?.Reconnect();
                 break;
         }
         controller.Update();
@@ -200,6 +216,8 @@ public partial class App : Application
         controller.Dispose();
         hotkeys.Dispose();
         isolateHotkey.Dispose();
+        obs.Dispose();
+        streamlabs.Dispose();
         tray.Dispose();
         welcome?.Close();
         window?.Close();

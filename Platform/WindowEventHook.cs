@@ -14,6 +14,7 @@ internal sealed class WindowEventHook : IDisposable
     const uint EVENT_OBJECT_DESTROY = 0x8001;
     const uint EVENT_OBJECT_HIDE = 0x8003; // DESTROY, SHOW and HIDE are consecutive
     const uint EVENT_OBJECT_LOCATIONCHANGE = 0x800B;
+    const uint EVENT_OBJECT_NAMECHANGE = 0x800C;
     const uint EVENT_OBJECT_CLOAKED = 0x8017;
     const uint EVENT_OBJECT_UNCLOAKED = 0x8018;
 
@@ -52,6 +53,7 @@ internal sealed class WindowEventHook : IDisposable
             (EVENT_OBJECT_DESTROY, EVENT_OBJECT_HIDE),
             (EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE),
             (EVENT_OBJECT_CLOAKED, EVENT_OBJECT_UNCLOAKED),
+            (EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE),
         };
         foreach (var (min, max) in ranges)
         {

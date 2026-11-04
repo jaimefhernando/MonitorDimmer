@@ -12,6 +12,7 @@ internal sealed class Notifications
     static readonly TimeSpan SummaryMinimum = TimeSpan.FromMinutes(5);
 
     readonly AppSettings settings;
+    readonly DimController controller;
     readonly TrayIcon tray;
     readonly Dictionary<string, DateTime> lastDimNotice = new(StringComparer.OrdinalIgnoreCase);
     string? announcedUpdate;
@@ -19,15 +20,18 @@ internal sealed class Notifications
     public Notifications(AppSettings settings, TrayIcon tray, DimController controller, Updater updater)
     {
         this.settings = settings;
+        this.controller = controller;
         this.tray = tray;
         controller.SessionStarted += OnSessionStarted;
         controller.SessionEnded += OnSessionEnded;
         updater.StateChanged += () => OnUpdaterChanged(updater);
     }
 
+    bool QuietForObs => settings.LiveQuietNotifications && controller.LiveActive;
+
     void OnSessionStarted(string name, string exe)
     {
-        if (!settings.NotifyOnDim) return;
+        if (!settings.NotifyOnDim || QuietForObs) return;
         var now = DateTime.Now;
         if (lastDimNotice.TryGetValue(exe, out var last) && now - last < DimCooldown) return;
         lastDimNotice[exe] = now;
@@ -36,14 +40,14 @@ internal sealed class Notifications
 
     void OnSessionEnded(PlaySession session)
     {
-        if (!settings.NotifyOnSessionEnd || session.Duration < SummaryMinimum) return;
+        if (!settings.NotifyOnSessionEnd || QuietForObs || session.Duration < SummaryMinimum) return;
         tray.Notify($"You played {session.Name} for {SessionTracker.Format(session.Duration)}",
             "Your monitors are back to normal. See all your play time on the Stats tab.");
     }
 
     void OnUpdaterChanged(Updater updater)
     {
-        if (!settings.NotifyOnUpdate || !updater.ReadyToInstall) return;
+        if (!settings.NotifyOnUpdate || QuietForObs || !updater.ReadyToInstall) return;
         // Status reads "Version X is ready…"; announce each version once
         if (announcedUpdate == updater.Status) return;
         announcedUpdate = updater.Status;

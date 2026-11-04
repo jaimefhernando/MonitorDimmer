@@ -286,6 +286,10 @@
                                 <TextBlock Style="{StaticResource Hint}"
                                            Text="Outside games, dims everything except the window you are working in, on every monitor. Also in the tray menu." />
                                 <StackPanel IsEnabled="{Binding FocusEnabled}">
+                                    <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding FocusByHover}">
+                                        <TextBlock Text="Follow the window under the mouse" FontWeight="Bold" />
+                                    </CheckBox>
+                                    <TextBlock Style="{StaticResource Hint}" Text="Moving the pointer out of an app window clears the focus highlight." />
                                     <DockPanel Margin="0,0,0,6">
                                         <TextBlock DockPanel.Dock="Right" Text="{Binding FocusStrength, StringFormat={}{0} %}" FontWeight="Bold" />
                                         <TextBlock Text="Darkness" />
@@ -301,7 +305,10 @@
                                     <TextBlock Text="Videos stay visible" FontSize="18" FontWeight="Bold" />
                                 </CheckBox>
                                 <TextBlock Style="{StaticResource Hint}"
-                                           Text="Video players (VLC, mpv, PotPlayer, Stremio...) and fullscreen videos stay lit on a dimmed monitor, while the rest of it goes dark." />
+                                           Text="Recognized media players and browser windows with video-service titles stay lit; fullscreen alone no longer makes every app exempt." />
+                                <TextBlock Text="Peek through on title changes" FontWeight="Bold" Margin="0,8,0,4" />
+                                <ui:AppListEditor x:Name="PeekEditor" PickerTitle="Add notification apps" />
+                                <TextBlock Style="{StaticResource Hint}" Text="A title change briefly reveals that window at half brightness (overlay dimming only). This is a best-effort notification hint; not every app changes its title for a ping." />
                                 <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding IsolateHotkeyEnabled}" Margin="0,8,0,0">
                                     <TextBlock Text="Isolate shortcut: Ctrl + Alt + I" FontWeight="Bold" />
                                 </CheckBox>
@@ -310,6 +317,54 @@
                             </StackPanel>
                         </Border>
                     </Grid>
+                    <Border Style="{StaticResource Card}" Margin="0,14,14,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="CREATOR MODE" />
+                            <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding ObsEnabled}">
+                                <TextBlock Text="Sync with OBS Studio" FontSize="18" FontWeight="Bold" />
+                            </CheckBox>
+                            <TextBlock Style="{StaticResource Hint}" Text="Connects to OBS WebSocket v5 and detects when streaming or recording. The status appears on Home; it can optionally lock the cursor to the active monitor. Add stream chat to Exceptions to keep that monitor visible." />
+                            <UniformGrid Columns="3" Margin="0,8,0,0">
+                                <StackPanel Margin="0,0,8,0">
+                                    <TextBlock Text="Host" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+                                    <TextBox Text="{Binding ObsHost, UpdateSourceTrigger=PropertyChanged, Delay=500}" AutomationProperties.Name="OBS host" />
+                                </StackPanel>
+                                <StackPanel Margin="0,0,8,0">
+                                    <TextBlock Text="Port" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+                                    <TextBox Text="{Binding ObsPort, UpdateSourceTrigger=PropertyChanged, Delay=500}" AutomationProperties.Name="OBS WebSocket port" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="WebSocket password" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+                                    <PasswordBox x:Name="ObsPasswordBox" PasswordChanged="ObsPasswordBox_PasswordChanged" AutomationProperties.Name="OBS password" />
+                                </StackPanel>
+                            </UniformGrid>
+                            <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding LiveLockMouse}" Margin="0,8,0,0">
+                                <TextBlock Text="Lock cursor to the active monitor while OBS or Streamlabs streams or records" FontWeight="Bold" />
+                            </CheckBox>
+                            <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding LiveQuietNotifications}" Margin="0,4,0,0">
+                                <TextBlock Text="Suppress Shadeplay notifications while live" FontWeight="Bold" />
+                            </CheckBox>
+                            <TextBlock x:Name="ObsStatusText" Style="{StaticResource Hint}" Text="OBS disconnected" />
+                            <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding StreamlabsEnabled}" Margin="0,12,0,0">
+                                <TextBlock Text="Sync with Streamlabs Desktop" FontSize="18" FontWeight="Bold" />
+                            </CheckBox>
+                            <TextBlock Style="{StaticResource Hint}" Text="Connects to the local Streamlabs Desktop pipe and detects when streaming or recording. No setup needed inside Streamlabs. Add stream chat to Exceptions to keep that monitor visible." />
+                            <TextBlock x:Name="StreamlabsStatusText" Style="{StaticResource Hint}" Text="Streamlabs disconnected" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}" Margin="0,14,14,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="VIRTUAL DISPLAY ZONES" />
+                            <TextBlock Text="Split a display into zones" FontSize="18" FontWeight="Bold" Margin="0,0,0,8" />
+                            <TextBlock Style="{StaticResource Hint}" Text="When a game or manual dim session is active, the cursor's zone stays bright and the other zones on that display are dimmed. Other monitors continue using the normal rules." />
+                            <UniformGrid Columns="4" Margin="0,8,0,0">
+                                <RadioButton Style="{StaticResource Segment}" Content="Off" GroupName="ZoneLayout" IsChecked="{Binding ZoneLayout, Converter={StaticResource EnumMatch}, ConverterParameter=Off}" />
+                                <RadioButton Style="{StaticResource Segment}" Content="Left / right" GroupName="ZoneLayout" IsChecked="{Binding ZoneLayout, Converter={StaticResource EnumMatch}, ConverterParameter=VerticalHalves}" />
+                                <RadioButton Style="{StaticResource Segment}" Content="Top / bottom" GroupName="ZoneLayout" IsChecked="{Binding ZoneLayout, Converter={StaticResource EnumMatch}, ConverterParameter=HorizontalHalves}" />
+                                <RadioButton Style="{StaticResource Segment}" Content="Four" GroupName="ZoneLayout" IsChecked="{Binding ZoneLayout, Converter={StaticResource EnumMatch}, ConverterParameter=Quadrants}" />
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
                     <Grid Margin="0,14,14,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition />

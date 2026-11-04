@@ -6,6 +6,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Shadeplay.Platform;
 
 namespace Shadeplay;
 
@@ -20,6 +21,8 @@ public enum DimMode
 }
 
 public enum AppTheme { Dark, Light, System }
+
+public enum ZoneLayout { Off, VerticalHalves, HorizontalHalves, Quadrants }
 
 public enum RgbStyle
 {
@@ -131,6 +134,7 @@ public sealed class AppSettings : ObservableObject
         "vlc.exe", "stremio.exe", "crunchyroll.exe", "potplayer.exe", "spotify.exe", "eldenring.exe", "ffxiv_dx11.exe",
     };
     ObservableCollection<string> exceptionApps = new() { "discord.exe", "obs64.exe" };
+    ObservableCollection<string> peekApps = new() { "teams.exe", "ms-teams.exe", "slack.exe" };
     ObservableCollection<MonitorSetting> monitors = new();
     ObservableCollection<GameProfile> profiles = new();
     DimMethod dimMethod = DimMethod.Overlay;
@@ -141,12 +145,21 @@ public sealed class AppSettings : ObservableObject
     bool idleDimEnabled;
     int idleMinutes = 5;
     int idleStrength = 70;
+    ZoneLayout zoneLayout;
     bool focusEnabled;
+    bool focusByHover;
     bool dimContrastEnabled;
     int dimContrast = 30;
     bool dimSaturationEnabled;
     int dimSaturation = 40;
     bool osdSafe;
+    bool obsEnabled;
+    bool liveLockMouse;
+    bool liveQuietNotifications = true;
+    string obsHost = "127.0.0.1";
+    int obsPort = 4455;
+    string obsPasswordProtected = "";
+    bool streamlabsEnabled;
     bool oledProtect;
     int focusStrength = 70;
     bool mediaOverride = true;
@@ -220,6 +233,7 @@ public sealed class AppSettings : ObservableObject
 
     public ObservableCollection<string> WatchedApps { get => watchedApps; set => SetList(ref watchedApps, value); }
     public ObservableCollection<string> ExceptionApps { get => exceptionApps; set => SetList(ref exceptionApps, value); }
+    public ObservableCollection<string> PeekApps { get => peekApps; set => SetList(ref peekApps, value); }
     public ObservableCollection<MonitorSetting> Monitors { get => monitors; set => SetList(ref monitors, value); }
     public ObservableCollection<GameProfile> Profiles { get => profiles; set => SetList(ref profiles, value); }
 
@@ -246,12 +260,27 @@ public sealed class AppSettings : ObservableObject
     public int DimSaturation { get => dimSaturation; set => Set(ref dimSaturation, Math.Clamp(value, 5, 90)); }
     /// <summary>Send DDC/CI commands slowly and in small steps, for monitors that choke on quick changes.</summary>
     public bool OsdSafe { get => osdSafe; set => Set(ref osdSafe, value); }
+    public bool ObsEnabled { get => obsEnabled; set => Set(ref obsEnabled, value); }
+    public bool LiveLockMouse { get => liveLockMouse; set => Set(ref liveLockMouse, value); }
+    public bool LiveQuietNotifications { get => liveQuietNotifications; set => Set(ref liveQuietNotifications, value); }
+    public string ObsHost { get => obsHost; set => Set(ref obsHost, value?.Trim() ?? "127.0.0.1"); }
+    public int ObsPort { get => obsPort; set => Set(ref obsPort, Math.Clamp(value, 1, 65535)); }
+    [JsonIgnore] public string ObsPassword
+    {
+        get => DpapiSecret.Unprotect(obsPasswordProtected);
+        set => Set(ref obsPasswordProtected, DpapiSecret.Protect(value ?? ""), nameof(ObsPassword));
+    }
+    public string ObsPasswordProtected { get => obsPasswordProtected; set => Set(ref obsPasswordProtected, value ?? ""); }
+    public bool StreamlabsEnabled { get => streamlabsEnabled; set => Set(ref streamlabsEnabled, value); }
     /// <summary>Slowly drift a faint gradient across dimmed screens so no pixel stays at one level.</summary>
     public bool OledProtect { get => oledProtect; set => Set(ref oledProtect, value); }
 
     /// <summary>Outside games, dim everything except the window you are working in.</summary>
+    public ZoneLayout ZoneLayout { get => zoneLayout; set => Set(ref zoneLayout, value); }
     public bool FocusEnabled { get => focusEnabled; set => Set(ref focusEnabled, value); }
     public int FocusStrength { get => focusStrength; set => Set(ref focusStrength, Math.Clamp(value, 10, 95)); }
+    /// <summary>Follow the window under the mouse; leaving all app windows restores the normal view.</summary>
+    public bool FocusByHover { get => focusByHover; set => Set(ref focusByHover, value); }
     /// <summary>Keep video players and fullscreen videos lit on a dimmed monitor.</summary>
     public bool MediaOverride { get => mediaOverride; set => Set(ref mediaOverride, value); }
     /// <summary>Ctrl+Alt+I: everything pitch-black except the window in front.</summary>
