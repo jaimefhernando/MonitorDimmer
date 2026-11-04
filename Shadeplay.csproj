@@ -14,7 +14,7 @@
     <Product>Shadeplay</Product>
     <Copyright>Copyright (c) 2026 jaimefhernando. MIT License.</Copyright>
     <!-- scripts\release.ps1 overrides this with -p:Version -->
-    <Version>0.9.1</Version>
+    <Version>0.9.2</Version>
     <ApplicationIcon>assets\app.ico</ApplicationIcon>
     <!-- Velopack must run before WPF starts, so Main lives in Program.cs -->
     <StartupObject>Shadeplay.Program</StartupObject>

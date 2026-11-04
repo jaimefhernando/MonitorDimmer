@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
@@ -12,11 +13,18 @@ namespace Shadeplay.Platform;
 internal static class AppIcon
 {
     static Icon? icon;
+    static ImageSource? imageSource;
 
     public static Icon Icon => icon ??= Create(32);
 
-    public static ImageSource ImageSource =>
-        Imaging.CreateBitmapSourceFromHIcon(Icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+    public static ImageSource ImageSource
+    {
+        get
+        {
+            if (imageSource == null) _ = Icon;
+            return imageSource!;
+        }
+    }
 
     static Icon Create(int size)
     {
@@ -40,11 +48,18 @@ internal static class AppIcon
                 g.FillRectangle(stand, 7 * s, 24 * s, 8 * s, 3 * s);
         }
         IntPtr hicon = bmp.GetHicon();
-        var result = Icon.FromHandle(hicon);
-        // Icon.FromHandle wraps the handle without owning it; free it once the Icon is done with it.
-        // The Icon keeps no copy of the handle's data, so it is safe to free immediately.
-        DestroyIcon(hicon);
-        return result;
+        // ImageSource copies the pixel data during construction, so it needs the handle alive only here.
+        imageSource = Imaging.CreateBitmapSourceFromHIcon(hicon, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+        // Icon.FromHandle wraps the handle without owning it. Serialize via a stream to get an
+        // independent Icon that owns its own handle, then free the original GDI handle.
+        using (var ms = new MemoryStream())
+        {
+            using (var temp = Icon.FromHandle(hicon))
+                temp.Save(ms);
+            ms.Position = 0;
+            DestroyIcon(hicon);
+            return new Icon(ms);
+        }
     }
 
     [DllImport("user32.dll", SetLastError = true)]
