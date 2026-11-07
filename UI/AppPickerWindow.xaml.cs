@@ -7,7 +7,7 @@ namespace Shadeplay.UI;
 
 public partial class AppPickerWindow : Window
 {
-    public sealed record RunningApp(string Name, string Title);
+    public sealed record RunningApp(string Name, string Title, string ExePath = "");
 
     readonly HashSet<string> alreadyListed;
     readonly List<RunningApp> extra;
@@ -38,7 +38,7 @@ public partial class AppPickerWindow : Window
     {
         var running = WindowScanner.Scan()
             .GroupBy(w => w.ProcessName)
-            .Select(g => new RunningApp(g.Key, g.Select(w => w.Title).FirstOrDefault(t => t.Length > 0) ?? ""));
+            .Select(g => new RunningApp(g.Key, g.Select(w => w.Title).FirstOrDefault(t => t.Length > 0) ?? "", g.First().ExePath));
 
         apps = running
             .Concat(extra)

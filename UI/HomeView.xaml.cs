@@ -12,7 +12,7 @@ namespace Shadeplay.UI;
 public partial class HomeView : UserControl
 {
     public sealed record DayBar(string Label, double Height, Brush Fill, string Tip);
-    public sealed record RecentRow(string Mono, string Name, string When, string Time);
+    public sealed record RecentRow(string Mono, string Name, string When, string Time, ImageSource? Thumb);
 
     readonly DispatcherTimer clock = new() { Interval = TimeSpan.FromSeconds(20) };
     AppSettings settings = null!;
@@ -49,12 +49,18 @@ public partial class HomeView : UserControl
         controller.StateChanged += OnControllerStateChanged;
         controller.Sessions.HistoryChanged += OnHistoryChanged;
         settings.Changed += OnSettingsChanged;
+        GameArt.Changed += OnArtChanged;
         Refresh();
         RefreshStats();
     }
 
     void OnControllerStateChanged() => Dispatcher.BeginInvoke(new Action(Refresh));
     void OnHistoryChanged() => Dispatcher.BeginInvoke(new Action(RefreshStats));
+    void OnArtChanged() => Dispatcher.BeginInvoke(new Action(() =>
+    {
+        Refresh();
+        RefreshStats();
+    }));
     void OnSettingsChanged(string? name)
     {
         if (name == nameof(AppSettings.Enabled)) Refresh();
@@ -69,6 +75,7 @@ public partial class HomeView : UserControl
             controller.Sessions.HistoryChanged -= OnHistoryChanged;
         }
         if (settings != null) settings.Changed -= OnSettingsChanged;
+        GameArt.Changed -= OnArtChanged;
         clock.Stop();
     }
 
@@ -103,8 +110,7 @@ public partial class HomeView : UserControl
             string minutes = controller.SessionStartedAt is DateTime start
                 ? $" · {SessionTracker.Format(now - start)} this session" : "";
             SessionDetail.Text = Describe(game, dimmed) + minutes;
-            ProfileButton.Content = settings.FindProfile(controller.SessionExe ?? "") != null
-                ? $"Edit {controller.SessionName} profile" : $"Make a profile for {controller.SessionName}";
+            ProfileButton.Content = settings.FindProfile(controller.SessionExe ?? "") != null ? "Edit profile" : "Make a profile";
             ProfileButton.Visibility = Visibility.Visible;
         }
         else if (dimming)
@@ -126,13 +132,24 @@ public partial class HomeView : UserControl
         DimNowButton.Content = controller.ManualActive ? "Undo dim now" : "Dim now";
         ExtrasList.ItemsSource = controller.SessionExtras;
 
+        // The game's art, only while it's being played
+        ImageSource? art = null;
+        if (dimming && controller.SessionName != null)
+        {
+            var set = GameArt.Find(controller.SessionName, controller.SessionExe ?? "", controller.SessionExePath ?? "");
+            if (!set.HasCover || !set.HasHero) GameArt.Request(controller.SessionName, GameDetector.FindByName(controller.SessionName)?.SteamAppId);
+            art = ArtImages.Load(set.BestHero, 1280);
+        }
+        HeroArt.Source = art;
+        HeroScrim.Visibility = art != null ? Visibility.Visible : Visibility.Collapsed;
+
         Map.Tiles = states.Select(s => new MonitorTile(s.Monitor.Bounds, $"Display {s.Monitor.Number}", Badge(s),
             s.Monitor.FriendlyName, s.Kind switch
             {
                 MonitorDimKind.Game => MonitorTileState.Game,
                 MonitorDimKind.Dimmed or MonitorDimKind.Idle or MonitorDimKind.Focus => MonitorTileState.Dimmed,
                 _ => MonitorTileState.Normal,
-            })).ToList();
+            }, s.Kind == MonitorDimKind.Game ? art : null)).ToList();
         // The map draws its own content, so it describes itself to screen readers
         System.Windows.Automation.AutomationProperties.SetName(Map,
             string.Join("; ", states.Select(s => $"Display {s.Monitor.Number}: {Badge(s).ToLowerInvariant()}")));
@@ -164,7 +181,8 @@ public partial class HomeView : UserControl
     void RefreshStats()
     {
         if (controller == null) return;
-        var sessions = controller.Sessions.Load().Where(s => s.IsGame).ToList();
+        var history = controller.Sessions.Load();
+        var sessions = history.Where(s => s.IsGame).ToList();
 
         // Monday to Sunday of this week
         var today = DateTime.Today;
@@ -191,10 +209,13 @@ public partial class HomeView : UserControl
             _ => $"across {week.Count} sessions",
         };
 
-        var recent = sessions.OrderByDescending(s => s.Start).Take(4).Select(s => new RecentRow(
-            Monogram(s.Name), s.Name,
-            s.Start.Date == today ? "Today" : s.Start.Date == today.AddDays(-1) ? "Yesterday" : s.Start.ToString("ddd", CultureInfo.CurrentCulture),
-            SessionTracker.Format(s.Duration))).ToList();
+        var recent = GameShelf.Recent(history, 4).Select(g =>
+        {
+            var art = GameArt.Find(g.Name, g.ExeName, g.ExePath);
+            if (!art.HasCover && !art.HasHero) GameArt.Request(g.Name, g.Game?.SteamAppId);
+            return new RecentRow(Monogram(g.Name), g.Name, GameShelf.When(g.LastPlayed),
+                g.Duration is TimeSpan d ? SessionTracker.Format(d) : "", ArtImages.Load(art.BestThumb, 136));
+        }).ToList();
         RecentList.ItemsSource = recent;
         NoSessionsText.Visibility = recent.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }

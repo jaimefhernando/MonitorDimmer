@@ -29,14 +29,13 @@
 
             <!-- Now dimming -->
             <c:ChamferBorder Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
-                             Chamfer="18" Padding="28,26" Margin="0,0,0,16">
+                             Chamfer="18" Margin="0,0,0,16">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" MinWidth="280" />
-                        <ColumnDefinition Width="28" />
                         <ColumnDefinition Width="1.05*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel>
+                    <StackPanel Margin="28,26">
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                             <Rectangle x:Name="StateDiamond" Width="8" Height="8" Margin="0,0,10,0" VerticalAlignment="Center">
                                 <Rectangle.LayoutTransform>
@@ -68,10 +67,11 @@
                             <Button x:Name="DimNowButton" Click="DimNow_Click" MinHeight="44" Style="{StaticResource GhostButton}" />
                         </StackPanel>
                     </StackPanel>
-                    <Border Grid.Column="2" Background="{DynamicResource InputBg}" BorderBrush="{DynamicResource Divider}"
-                            BorderThickness="1" Padding="18" MinHeight="200">
-                        <c:MonitorMap x:Name="Map" />
-                    </Border>
+                    <Grid Grid.Column="1" Background="{DynamicResource InputBg}" MinHeight="250" ClipToBounds="True">
+                        <Image x:Name="HeroArt" Stretch="UniformToFill" />
+                        <Rectangle x:Name="HeroScrim" Fill="{DynamicResource InputBg}" Opacity="0.55" Visibility="Collapsed" />
+                        <c:MonitorMap x:Name="Map" Margin="26" />
+                    </Grid>
                 </Grid>
             </c:ChamferBorder>
 
@@ -175,18 +175,19 @@
                 </Border>
                 <Border Grid.Column="2" Style="{StaticResource Card}" Margin="0">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="RECENT SESSIONS" Margin="0,0,0,10" />
+                        <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="RECENTLY PLAYED" Margin="0,0,0,10" />
                         <TextBlock x:Name="NoSessionsText" Style="{StaticResource Hint}"
-                                   Text="Your play sessions show up here after a game has dimmed your monitors for 30 seconds." />
+                                   Text="Games you play show up here." />
                         <ItemsControl x:Name="RecentList">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="{DynamicResource Divider}" BorderThickness="0,0,0,1" MinHeight="46">
                                         <DockPanel VerticalAlignment="Center">
-                                            <Border DockPanel.Dock="Left" Width="32" Height="32" Background="{DynamicResource SelectedBg}" Margin="0,0,12,0">
+                                            <Grid DockPanel.Dock="Left" Width="68" Height="32" Background="{DynamicResource SelectedBg}" Margin="0,0,12,0" ClipToBounds="True">
                                                 <TextBlock Text="{Binding Mono}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextMain}"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                            </Border>
+                                                <Image Source="{Binding Thumb}" Stretch="UniformToFill" />
+                                            </Grid>
                                             <TextBlock DockPanel.Dock="Right" Text="{Binding Time}" FontWeight="SemiBold" Width="86" TextAlignment="Right"
                                                        Foreground="{DynamicResource TextMain}" VerticalAlignment="Center" />
                                             <TextBlock DockPanel.Dock="Right" Text="{Binding When}" FontSize="13" Margin="8,0"

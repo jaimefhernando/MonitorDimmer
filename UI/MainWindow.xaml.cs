@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -49,6 +50,7 @@ public partial class MainWindow : Window
         this.controller = controller;
         DataContext = settings;
         ObsPasswordBox.Password = settings.ObsPassword;
+        SteamGridDbKeyBox.Password = settings.SteamGridDbKey;
         loadingObsPassword = false;
         controller.StateChanged += UpdateObsStatus;
         controller.StateChanged += UpdateStreamlabsStatus;
@@ -59,6 +61,17 @@ public partial class MainWindow : Window
         ModeBox.ItemsSource = Modes;
         Home.Init(settings, controller, OpenProfile, () => Nav.SelectedItem = StatsTab);
         Profiles.Init(settings, controller);
+        settings.Profiles.CollectionChanged += (_, _) => ShowGamesCount();
+        Profiles.DetailChanged += open =>
+        {
+            DetectionPanel.Visibility = open ? Visibility.Collapsed : Visibility.Visible;
+            Dispatcher.BeginInvoke(new Action(GamesScroll.ScrollToTop), System.Windows.Threading.DispatcherPriority.Loaded);
+        };
+        Profiles.ShowAllRequested += () =>
+        {
+            DetectionPanel.BringIntoView();
+            GameSearch.Focus();
+        };
         Stats.Init(controller.Sessions);
         controller.Brightness.SupportChanged += OnBrightnessSupportChanged;
         Swatches.ItemsSource = SwatchColors;
@@ -140,10 +153,19 @@ public partial class MainWindow : Window
     void OpenProfile(string? exe)
     {
         Nav.SelectedItem = GamesTab;
-        if (exe != null) Profiles.ShowProfile(exe, controller.SessionName ?? "");
+        if (exe != null) Profiles.ShowProfile(exe, controller.SessionName ?? "", controller.SessionExePath ?? "");
     }
 
     void AddGame_Click(object sender, RoutedEventArgs e) => Profiles.AddGame();
+
+    void GameSearch_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        string q = GameSearch.Text.Trim();
+        GameSearchHint.Visibility = GameSearch.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        CollectionViewSource.GetDefaultView(GamesList.ItemsSource).Filter = q.Length == 0
+            ? null
+            : o => o is DetectedGame g && g.Name.Contains(q, StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>Adds newly connected monitors and checks which apps and devices are available.</summary>
     DateTime lastBrightnessCheck = DateTime.MinValue;
@@ -221,8 +243,11 @@ public partial class MainWindow : Window
         GamesSummary.Text = games.Count == 0
             ? "No installed games found yet. Games Windows Game Bar recognises are still detected."
             : $"{games.Count} installed games found. Games Windows Game Bar recognises are detected too.";
-        Tracking.SetText(GamesKicker, $"{games.Count} DETECTED · {settings.Profiles.Count} WITH A PROFILE");
+        ShowGamesCount();
     }
+
+    void ShowGamesCount() => Tracking.SetText(GamesKicker,
+        $"{GameDetector.InstalledGames.Count} DETECTED · {settings.Profiles.Count} WITH A PROFILE");
 
     void Rescan_Click(object sender, RoutedEventArgs e)
     {
@@ -263,6 +288,11 @@ public partial class MainWindow : Window
     }
 
     // --- Shortcut capture ---
+
+    void SteamGridDbKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (!loadingObsPassword) settings.SteamGridDbKey = SteamGridDbKeyBox.Password.Trim();
+    }
 
     void ObsPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
     {

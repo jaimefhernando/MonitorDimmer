@@ -78,7 +78,7 @@
                     <TextBlock Text="Games" VerticalAlignment="Center" />
                 </StackPanel>
             </TabItem.Header>
-            <ScrollViewer Style="{StaticResource PageScroll}">
+            <ScrollViewer x:Name="GamesScroll" Style="{StaticResource PageScroll}">
                 <StackPanel>
                     <DockPanel Margin="0,0,0,20">
                         <Button DockPanel.Dock="Right" Content="+  Add game" Style="{StaticResource AccentButton}" Margin="0"
@@ -91,6 +91,7 @@
 
                     <ui:ProfilesView x:Name="Profiles" Margin="0,0,0,24" />
 
+                    <StackPanel x:Name="DetectionPanel">
                     <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="DETECTION" Margin="0,0,0,10" />
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
@@ -105,6 +106,12 @@
                                 </CheckBox>
                             </DockPanel>
                             <TextBlock x:Name="GamesSummary" Foreground="{DynamicResource TextSecondary}" Margin="0,10,0,8" />
+                            <Grid Margin="0,0,0,8" Visibility="{Binding AutoDetectGames, Converter={StaticResource BoolToVisibility}}">
+                                <TextBox x:Name="GameSearch" TextChanged="GameSearch_TextChanged"
+                                         AutomationProperties.Name="Search installed games" />
+                                <TextBlock x:Name="GameSearchHint" Text="Search installed games" IsHitTestVisible="False"
+                                           Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="12,0" />
+                            </Grid>
                             <ListBox x:Name="GamesList" Height="160"
                                      Visibility="{Binding AutoDetectGames, Converter={StaticResource BoolToVisibility}}"
                                      AutomationProperties.Name="Detected games">
@@ -142,6 +149,7 @@
                             </StackPanel>
                         </Border>
                     </Grid>
+                    </StackPanel>
                 </StackPanel>
             </ScrollViewer>
         </TabItem>
@@ -774,6 +782,17 @@
                             </Border>
                             <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding StartWithWindows}"
                                       Content="Start with Windows, quietly in the tray" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Game art" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Steam games use the art Steam already keeps on this PC. For other games, add your own free SteamGridDB key, found under Preferences on steamgriddb.com. Shadeplay then asks SteamGridDB for art of the games on screen, by name, and keeps it on this PC. For personal use." />
+                            <TextBlock Text="SteamGridDB API key (optional)" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+                            <PasswordBox x:Name="SteamGridDbKeyBox" PasswordChanged="SteamGridDbKeyBox_PasswordChanged" MaxWidth="420"
+                                         HorizontalAlignment="Left" Width="420" AutomationProperties.Name="SteamGridDB API key" />
                         </StackPanel>
                     </Border>
 

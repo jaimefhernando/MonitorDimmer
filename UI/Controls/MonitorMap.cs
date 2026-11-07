@@ -10,7 +10,8 @@ public enum MonitorTileState { Normal, Game, Dimmed, Selected }
 
 /// <param name="Bounds">The monitor's desktop rectangle, for its size and position.</param>
 /// <param name="Badge">Small label above the name, e.g. "GAME" or "DIMMED 80 %".</param>
-public sealed record MonitorTile(RECT Bounds, string Name, string Badge, string Detail, MonitorTileState State);
+/// <param name="Art">Picture filling the tile, under its text; the game's art on the game's monitor.</param>
+public sealed record MonitorTile(RECT Bounds, string Name, string Badge, string Detail, MonitorTileState State, ImageSource? Art = null);
 
 /// <summary>
 /// The monitors drawn to scale, as Windows arranges them: the game's monitor outlined in the
@@ -63,13 +64,15 @@ public class MonitorMap : FrameworkElement
             (Brush fill, Brush border, double thickness, Brush badge, Brush name) = t.State switch
             {
                 MonitorTileState.Game or MonitorTileState.Selected =>
-                    (Res("SelectedBg"), Res("Accent"), 2.0, Res("Accent"), Res("TextMain")),
+                    (Res("SelectedBg"), Res("Accent"), 2.0, Res("Accent"), t.Art != null ? Brushes.White : Res("TextMain")),
                 MonitorTileState.Dimmed =>
                     (Res("DimmedStripes"), Res("ControlBorder"), 1.0, Res("TextMuted"), Res("TextSecondary")),
                 _ => (Res("ControlBg"), Res("ControlBorder"), 1.0, Res("TextMuted"), Res("TextMain")),
             };
-            dc.DrawRectangle(fill, new Pen(border, thickness),
-                new Rect(r.X + thickness / 2, r.Y + thickness / 2, Math.Max(0, r.Width - thickness), Math.Max(0, r.Height - thickness)));
+            var inner = new Rect(r.X + thickness / 2, r.Y + thickness / 2, Math.Max(0, r.Width - thickness), Math.Max(0, r.Height - thickness));
+            dc.DrawRectangle(t.Art != null ? ArtFill(t.Art, inner) ?? fill : fill, null, inner);
+            if (t.Art != null) dc.DrawRectangle(ArtScrim, null, inner);
+            dc.DrawRectangle(null, new Pen(border, thickness), inner);
 
             // Badge, name and detail, centred; smaller monitors get smaller text
             double size = Math.Clamp(r.Height / 7, 10, 16);
@@ -78,7 +81,7 @@ public class MonitorMap : FrameworkElement
                 Text(Spread(t.Badge), font, size * 0.72, badge, dpi),
                 Text(t.Name, bold, size, name, dpi),
             };
-            if (t.Detail.Length > 0) lines.Add(Text(t.Detail, font, size * 0.78, Res("TextMuted"), dpi));
+            if (t.Detail.Length > 0) lines.Add(Text(t.Detail, font, size * 0.78, t.Art != null ? Brushes.White : Res("TextMuted"), dpi));
             double total = lines.Sum(l => l.Height) + (lines.Count - 1) * 2;
             double y = r.Top + (r.Height - total) / 2;
             dc.PushClip(new RectangleGeometry(r));
@@ -95,6 +98,24 @@ public class MonitorMap : FrameworkElement
     }
 
     Brush Res(string key) => TryFindResource(key) as Brush ?? Brushes.Gray;
+
+    /// <summary>Keeps the white text readable over art in either theme.</summary>
+    static readonly Brush ArtScrim = Freeze(new SolidColorBrush(Color.FromArgb(0x9C, 0, 0, 0)));
+
+    static Brush Freeze(Brush b)
+    {
+        b.Freeze();
+        return b;
+    }
+
+    /// <summary>The art cropped to fill a tile.</summary>
+    static Brush? ArtFill(ImageSource art, Rect area)
+    {
+        if (area.Width <= 0 || area.Height <= 0) return null;
+        var brush = new ImageBrush(art) { Stretch = Stretch.UniformToFill, AlignmentX = AlignmentX.Center, AlignmentY = AlignmentY.Center };
+        brush.Freeze();
+        return brush;
+    }
 
     static FormattedText Text(string s, Typeface face, double size, Brush brush, double dpi) =>
         new(s, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, face, size, brush, dpi);

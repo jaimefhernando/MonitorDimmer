@@ -58,6 +58,7 @@ public partial class App : Application
         SessionEnding += (_, _) => controller?.Dispose();
 
         settings = AppSettings.Load();
+        GameArt.Configure(() => settings.SteamGridDbKey);
         ThemeManager.Apply(settings.Theme);
         controller = new DimController(settings);
         obs = new ObsSync(settings);
@@ -132,6 +133,9 @@ public partial class App : Application
                 break;
             case nameof(AppSettings.Theme):
                 ThemeManager.Apply(settings.Theme);
+                break;
+            case nameof(AppSettings.SteamGridDbKey):
+                GameArt.KeyChanged();
                 break;
             case nameof(AppSettings.ObsEnabled):
             case nameof(AppSettings.ObsHost):

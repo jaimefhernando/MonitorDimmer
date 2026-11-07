@@ -6,7 +6,7 @@
         <!-- One game tile in the library -->
         <Style x:Key="Tile" TargetType="ListBoxItem">
             <Setter Property="Margin" Value="0,0,12,12" />
-            <Setter Property="Width" Value="172" />
+            <Setter Property="Width" Value="132" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
@@ -33,6 +33,31 @@
             </Setter>
         </Style>
 
+        <!-- A game cover that opens the game -->
+        <Style x:Key="CoverButton" TargetType="Button">
+            <Setter Property="Margin" Value="0,0,12,12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Background="Transparent">
+                            <ContentPresenter />
+                            <Border x:Name="Ring" Height="198" VerticalAlignment="Top" BorderBrush="{DynamicResource Accent}" BorderThickness="2" Visibility="Hidden" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="SegmentBox" TargetType="Border">
             <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
             <Setter Property="BorderThickness" Value="1" />
@@ -40,50 +65,120 @@
     </UserControl.Resources>
 
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" MinWidth="200" />
-            <ColumnDefinition Width="20" />
-            <ColumnDefinition Width="430" />
-        </Grid.ColumnDefinitions>
-
-        <!-- Library of profiles -->
-        <Grid>
-            <ListBox x:Name="ProfileList" SelectionChanged="ProfileList_SelectionChanged" ItemContainerStyle="{StaticResource Tile}"
-                     Background="Transparent" BorderThickness="0" Padding="0" AutomationProperties.Name="Games with a profile"
-                     ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                <ListBox.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel />
-                    </ItemsPanelTemplate>
-                </ListBox.ItemsPanel>
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel>
-                            <Grid Height="104" Background="{DynamicResource DimmedStripes}">
-                                <TextBlock Text="{Binding Name, Converter={x:Static c:MonogramConverter.Instance}}" FontSize="26" FontWeight="Bold"
-                                           Foreground="{DynamicResource Monogram}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Grid>
-                            <StackPanel Margin="12,10,12,12">
-                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
-                                           Foreground="{DynamicResource TextMain}" />
-                                <TextBlock Text="{Binding ExeName}" FontSize="12" TextTrimming="CharacterEllipsis"
-                                           Foreground="{DynamicResource TextMuted}" Margin="0,2,0,0" />
-                            </StackPanel>
+        <!-- Shelves: the games worth seeing first -->
+        <StackPanel x:Name="ShelfPanel">
+            <c:ChamferBorder x:Name="Banner" Chamfer="18" Height="232" Margin="0,0,0,24" Background="{DynamicResource CardBg}"
+                             BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="400" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <Image x:Name="BannerArt" Grid.Column="1" Stretch="UniformToFill" />
+                    <DockPanel Background="{DynamicResource CardBg}">
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="28,0,0,24">
+                            <Button x:Name="BannerButton" Click="Banner_Click" MinHeight="44" />
                         </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-            <Border x:Name="EmptyListText" Style="{StaticResource Card}" VerticalAlignment="Top">
-                <StackPanel>
-                    <TextBlock Text="No game profiles yet" Style="{StaticResource CardTitle}" />
-                    <TextBlock Style="{StaticResource Hint}" Margin="0"
-                               Text="Every detected game is dimmed with your normal settings. Add a game to give it its own darkness, monitors, lighting and actions." />
-                </StackPanel>
-            </Border>
-        </Grid>
+                        <StackPanel Margin="28,24,24,0">
+                            <TextBlock x:Name="BannerKicker" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" Margin="0,0,0,10" />
+                            <TextBlock x:Name="BannerTitle" FontSize="32" FontWeight="Bold" TextWrapping="Wrap" MaxHeight="84"
+                                       TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextMain}" Margin="0,0,0,6" />
+                            <TextBlock x:Name="BannerDetail" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </DockPanel>
+                </Grid>
+            </c:ChamferBorder>
 
-        <!-- Editor for the selected profile -->
-        <c:ChamferBorder x:Name="Editor" Grid.Column="2" VerticalAlignment="Top" Chamfer="16"
+            <StackPanel x:Name="RecentShelf" Margin="0,0,0,12">
+                <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="RECENTLY PLAYED" Margin="0,0,0,12" />
+                <ItemsControl x:Name="RecentList">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Style="{StaticResource CoverButton}" Click="Recent_Click" Tag="{Binding}" ToolTip="{Binding Hint}"
+                                    AutomationProperties.Name="{Binding Name}">
+                                <StackPanel Width="132">
+                                    <Grid Height="198" Background="{DynamicResource DimmedStripes}" ClipToBounds="True">
+                                        <TextBlock Text="{Binding Mono}" FontSize="26" FontWeight="Bold" Foreground="{DynamicResource Monogram}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <Image Source="{Binding Cover}" Stretch="UniformToFill" />
+                                        <Border Visibility="{Binding BadgeVisibility}" Background="{DynamicResource Accent}" Padding="6,2"
+                                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="6">
+                                            <TextBlock Text="PROFILE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentText}" />
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                               Foreground="{DynamicResource TextMain}" Margin="0,8,0,0" />
+                                    <TextBlock Text="{Binding Meta}" FontSize="12" TextTrimming="CharacterEllipsis"
+                                               Foreground="{DynamicResource TextMuted}" />
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="WITH A PROFILE" Margin="0,0,0,12" />
+            <Grid Margin="0,0,0,12">
+                <ListBox x:Name="ProfileList" SelectionChanged="ProfileList_SelectionChanged" ItemContainerStyle="{StaticResource Tile}"
+                         PreviewMouseWheel="ProfileList_PreviewMouseWheel"
+                         Background="Transparent" BorderThickness="0" Padding="0" AutomationProperties.Name="Games with a profile"
+                         ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <Grid Height="198" Background="{DynamicResource DimmedStripes}" ClipToBounds="True">
+                                    <TextBlock Text="{Binding Name, Converter={x:Static c:MonogramConverter.Instance}}" FontSize="26" FontWeight="Bold"
+                                               Foreground="{DynamicResource Monogram}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Image Source="{Binding Converter={x:Static c:GameCoverConverter.Instance}}" Stretch="UniformToFill" />
+                                </Grid>
+                                <StackPanel Margin="10,8,10,10">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                               Foreground="{DynamicResource TextMain}" />
+                                    <TextBlock Text="{Binding ExeName}" FontSize="12" TextTrimming="CharacterEllipsis"
+                                               Foreground="{DynamicResource TextMuted}" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <Border x:Name="EmptyListText" Style="{StaticResource Card}" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="No game profiles yet" Style="{StaticResource CardTitle}" />
+                        <TextBlock Style="{StaticResource Hint}" Margin="0"
+                                   Text="Every detected game is dimmed with your normal settings. Pick a game above to give it its own darkness, monitors, lighting and actions." />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Border x:Name="MoreBar" Style="{StaticResource Card}" Padding="20,14">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="See all games" Click="SeeAll_Click" Margin="16,0,0,0" VerticalAlignment="Center" />
+                    <StackPanel>
+                        <TextBlock x:Name="MoreTitle" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextMain}" />
+                        <TextBlock Text="Still detected and dimmed. They show up here once you play them." FontSize="13"
+                                   Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- One game: its art and settings -->
+        <StackPanel x:Name="DetailPanel" Visibility="Collapsed">
+            <Button Content="Back to all games" Style="{StaticResource LinkButton}" Click="Back_Click" HorizontalAlignment="Left" Margin="0,0,0,10" />
+            <c:ChamferBorder x:Name="DetailHeroBox" Chamfer="18" Height="200" Margin="0,0,0,14" Background="{DynamicResource CardBg}">
+                <Image x:Name="DetailHero" Stretch="UniformToFill" />
+            </c:ChamferBorder>
+        <c:ChamferBorder x:Name="Editor" MaxWidth="760" HorizontalAlignment="Left" VerticalAlignment="Top" Chamfer="16"
                          Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource ControlBorder}" BorderThickness="1"
                          DataContext="{Binding SelectedItem, ElementName=ProfileList}">
             <StackPanel>
@@ -226,5 +321,6 @@
                 </StackPanel>
             </StackPanel>
         </c:ChamferBorder>
+        </StackPanel>
     </Grid>
 </UserControl>

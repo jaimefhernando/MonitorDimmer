@@ -7,7 +7,7 @@ namespace Shadeplay.Core;
 /// <param name="ExeName">"eldenring.exe".</param>
 /// <param name="Name">What to show: the profile name, else the window title, else the exe.</param>
 /// <param name="IsGame">Detected as a game or has a profile, as opposed to e.g. a video player.</param>
-public sealed record PlaySession(string ExeName, string Name, bool IsGame, DateTime Start, DateTime End)
+public sealed record PlaySession(string ExeName, string Name, bool IsGame, DateTime Start, DateTime End, string ExePath = "")
 {
     public TimeSpan Duration => End - Start;
 }
@@ -39,11 +39,11 @@ public sealed class SessionTracker : IDisposable
 
     public string? CurrentExe => open?.ExeName;
 
-    public void Begin(string exeName, string name, bool isGame)
+    public void Begin(string exeName, string name, bool isGame, string exePath = "")
     {
         End();
         var now = DateTime.Now;
-        open = new PlaySession(exeName, name, isGame, now, now);
+        open = new PlaySession(exeName, name, isGame, now, now, exePath);
         SaveOpen();
         checkpoint.Start();
     }

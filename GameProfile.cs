@@ -37,6 +37,7 @@ public sealed class GameProfile : ObservableObject
 {
     string exeName = "";
     string name = "";
+    string exePath = "";
     bool neverDim;
     bool customStrength;
     int strength = 80;
@@ -62,6 +63,8 @@ public sealed class GameProfile : ObservableObject
     /// <summary>Normalized program name, e.g. "eldenring.exe".</summary>
     public string ExeName { get => exeName; set => Set(ref exeName, value ?? ""); }
     public string Name { get => name; set => Set(ref name, value ?? ""); }
+    /// <summary>Full path of the program when known, to find its art.</summary>
+    public string ExePath { get => exePath; set => Set(ref exePath, value ?? ""); }
 
     /// <summary>This app never starts the dimming.</summary>
     public bool NeverDim { get => neverDim; set => Set(ref neverDim, value); }

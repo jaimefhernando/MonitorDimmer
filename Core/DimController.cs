@@ -580,6 +580,8 @@ public sealed class DimController : IDisposable
     public DateTime? SessionStartedAt { get; private set; }
     /// <summary>Program of the current session, e.g. "eldenring.exe".</summary>
     public string? SessionExe { get; private set; }
+    /// <summary>Full path of the current session's program.</summary>
+    public string? SessionExePath { get; private set; }
 
     /// <summary>Short descriptions of what the current session changed ("Wallpaper Engine paused").</summary>
     public IReadOnlyList<string> SessionExtras { get; private set; } = Array.Empty<string>();
@@ -590,12 +592,13 @@ public sealed class DimController : IDisposable
         sessionPlan = SessionPlan.Resolve(settings, profile);
         SessionName = trigger != null ? DisplayName(trigger, profile) : null;
         SessionExe = trigger?.ProcessName;
+        SessionExePath = trigger?.ExePath;
         SessionStartedAt = DateTime.Now;
         actions.DimStarted(sessionPlan, trigger?.ProcessId);
         if (trigger != null && settings.TrackSessions)
         {
             bool isGame = profile != null || GameDetector.IsGame(trigger.ExePath);
-            Sessions.Begin(trigger.ProcessName, DisplayName(trigger, profile), isGame);
+            Sessions.Begin(trigger.ProcessName, DisplayName(trigger, profile), isGame, trigger.ExePath);
         }
         Log.Write($"Dimming started: {key}" + (profile != null ? $" (profile '{profile.Name}')" : ""));
         if (trigger != null) SessionStarted?.Invoke(DisplayName(trigger, profile), trigger.ProcessName);
@@ -610,12 +613,15 @@ public sealed class DimController : IDisposable
         sessionPlan = null;
         SessionName = null;
         SessionExe = null;
+        SessionExePath = null;
         SessionStartedAt = null;
     }
 
     static string DisplayName(WindowInfo w, GameProfile? profile)
     {
         if (profile?.Name.Length > 0) return profile.Name;
+        // The store's name is cleaner than a window title like "ELDEN RING™"
+        if (GameDetector.Identify(w.ExePath) is { } game) return game.Name;
         string title = w.Title.Trim();
         return title.Length > 0 && title.Length <= 60 ? title : w.ProcessName;
     }

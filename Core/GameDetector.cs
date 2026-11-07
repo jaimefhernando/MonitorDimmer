@@ -5,7 +5,11 @@ using Microsoft.Win32;
 
 namespace Shadeplay.Core;
 
-public sealed record DetectedGame(string Name, string Source);
+/// <param name="SteamAppId">Steam's id for the game, when it came from Steam.</param>
+/// <param name="InstallDir">The game's folder, when the store reports one.</param>
+/// <param name="LastPlayed">When the store last started it, when it records that.</param>
+public sealed record DetectedGame(
+    string Name, string Source, string? SteamAppId = null, string? InstallDir = null, DateTime? LastPlayed = null);
 
 /// <summary>
 /// Recognises games by where they are installed (Steam, Epic, GOG, Ubisoft, Xbox, EA, Riot,
@@ -31,6 +35,85 @@ public static class GameDetector
     static List<string> roots = new();
     static HashSet<string> gameBarExes = new(StringComparer.OrdinalIgnoreCase);
     static List<DetectedGame> installed = new();
+    static string? steamPath;
+
+    /// <summary>Steam's own folder, or null when Steam isn't installed.</summary>
+    public static string? SteamPath
+    {
+        get
+        {
+            EnsureFresh();
+            lock (Gate) return steamPath;
+        }
+    }
+
+    /// <summary>The installed game whose folder holds this program, deepest folder first.</summary>
+    public static DetectedGame? Identify(string exePath)
+    {
+        if (exePath.Length == 0) return null;
+        EnsureFresh();
+        lock (Gate)
+        {
+            return installed
+                .Where(g => !string.IsNullOrEmpty(g.InstallDir)
+                    && exePath.StartsWith(g.InstallDir!.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(g => g.InstallDir!.Length)
+                .FirstOrDefault();
+        }
+    }
+
+    /// <summary>The installed game with this name, ignoring case, spaces and punctuation.</summary>
+    public static DetectedGame? FindByName(string name)
+    {
+        string key = NameKey(name);
+        if (key.Length == 0) return null;
+        EnsureFresh();
+        lock (Gate) return installed.FirstOrDefault(g => NameKey(g.Name) == key);
+    }
+
+    /// <summary>"Elden Ring™" and "ELDEN RING" both become "eldenring".</summary>
+    public static string NameKey(string name) =>
+        new(name.Where(c => c < 128 && char.IsLetterOrDigit(c)).Select(char.ToLowerInvariant).ToArray());
+
+    /// <summary>Where a program name was seen by Windows Game Bar, or "".</summary>
+    public static string PathOfExe(string exeName)
+    {
+        EnsureFresh();
+        lock (Gate)
+            return gameBarExes.FirstOrDefault(p => Path.GetFileName(p).Equals(exeName, StringComparison.OrdinalIgnoreCase)) ?? "";
+    }
+
+    /// <summary>
+    /// The game's main program: the one Windows Game Bar saw, else the largest program in its
+    /// folder that isn't an installer or helper. Null when neither is found.
+    /// </summary>
+    public static string? MainExe(DetectedGame game)
+    {
+        if (string.IsNullOrEmpty(game.InstallDir) || !Directory.Exists(game.InstallDir)) return null;
+        string prefix = game.InstallDir.TrimEnd('\\') + "\\";
+        lock (Gate)
+        {
+            string? seen = gameBarExes.FirstOrDefault(p => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+            if (seen != null) return seen;
+        }
+        try
+        {
+            var options = new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = 4, IgnoreInaccessible = true };
+            return Directory.EnumerateFiles(game.InstallDir, "*.exe", options)
+                .Where(p => !NotTheGame.IsMatch(Path.GetFileName(p)))
+                .OrderByDescending(p => new FileInfo(p).Length)
+                .FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"Could not look for {game.Name}'s program: {ex.Message}");
+            return null;
+        }
+    }
+
+    static readonly Regex NotTheGame = new(
+        "crash|setup|unins|install|redist|vc_|dxsetup|prereq|launcher|anticheat|helper|report|update|benchmark|server",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     /// <summary>Installed games found in the launchers' libraries, for display.</summary>
     public static IReadOnlyList<DetectedGame> InstalledGames
@@ -116,6 +199,7 @@ public static class GameDetector
         string? steam = Registry.GetValue(@"HKEY_CURRENT_USER\Software\Valve\Steam", "SteamPath", null) as string;
         if (string.IsNullOrEmpty(steam)) return;
         steam = steam.Replace('/', '\\');
+        lock (Gate) steamPath = steam;
 
         var libraries = new List<string> { steam };
         string vdf = Path.Combine(steam, "steamapps", "libraryfolders.vdf");
@@ -134,13 +218,20 @@ public static class GameDetector
 
             foreach (string acf in Directory.EnumerateFiles(apps, "appmanifest_*.acf"))
             {
-                var name = Regex.Match(File.ReadAllText(acf), "\"name\"\\s+\"(.+?)\"");
+                string manifest = File.ReadAllText(acf);
+                var name = Regex.Match(manifest, "\"name\"\\s+\"(.+?)\"");
                 if (!name.Success) continue;
                 string n = name.Groups[1].Value;
                 // Runtimes and tools that Steam installs next to games
                 if (n.Contains("Redistributable") || n.StartsWith("Steam Linux Runtime") || n.StartsWith("Proton")
                     || n == "Wallpaper Engine" || n == "Steamworks Common Redistributables") continue;
-                gamesOut.Add(new DetectedGame(n, "Steam"));
+                string? appId = Regex.Match(manifest, "\"appid\"\\s+\"(\\d+)\"") is { Success: true } id ? id.Groups[1].Value : null;
+                string? folder = Regex.Match(manifest, "\"installdir\"\\s+\"(.+?)\"") is { Success: true } dir
+                    ? Path.Combine(common, dir.Groups[1].Value) : null;
+                DateTime? played = Regex.Match(manifest, "\"LastPlayed\"\\s+\"(\\d+)\"") is { Success: true } last
+                    && long.TryParse(last.Groups[1].Value, out long seconds) && seconds > 0
+                    ? DateTimeOffset.FromUnixTimeSeconds(seconds).LocalDateTime : null;
+                gamesOut.Add(new DetectedGame(n, "Steam", appId, folder, played));
             }
         }
     }
@@ -154,10 +245,10 @@ public static class GameDetector
         {
             using var doc = JsonDocument.Parse(File.ReadAllText(item));
             var root = doc.RootElement;
-            if (root.TryGetProperty("InstallLocation", out var loc) && loc.GetString() is { Length: > 0 } path)
-                rootsOut.Add(path);
+            string? folder = root.TryGetProperty("InstallLocation", out var loc) ? loc.GetString() : null;
+            if (!string.IsNullOrEmpty(folder)) rootsOut.Add(folder);
             if (root.TryGetProperty("DisplayName", out var dn) && dn.GetString() is { Length: > 0 } name)
-                gamesOut.Add(new DetectedGame(name, "Epic"));
+                gamesOut.Add(new DetectedGame(name, "Epic", null, folder));
         }
     }
 
@@ -168,8 +259,9 @@ public static class GameDetector
         foreach (string id in games.GetSubKeyNames())
         {
             using var g = games.OpenSubKey(id);
-            if (g?.GetValue("path") is string path && path.Length > 0) rootsOut.Add(path);
-            if (g?.GetValue("gameName") is string name && name.Length > 0) gamesOut.Add(new DetectedGame(name, "GOG"));
+            string? folder = g?.GetValue("path") as string;
+            if (!string.IsNullOrEmpty(folder)) rootsOut.Add(folder);
+            if (g?.GetValue("gameName") is string name && name.Length > 0) gamesOut.Add(new DetectedGame(name, "GOG", null, folder));
         }
     }
 
@@ -183,7 +275,7 @@ public static class GameDetector
             if (g?.GetValue("InstallDir") is not string path || path.Length == 0) continue;
             path = path.Replace('/', '\\');
             rootsOut.Add(path);
-            gamesOut.Add(new DetectedGame(Path.GetFileName(path.TrimEnd('\\')), "Ubisoft"));
+            gamesOut.Add(new DetectedGame(Path.GetFileName(path.TrimEnd('\\')), "Ubisoft", null, path));
         }
     }
 

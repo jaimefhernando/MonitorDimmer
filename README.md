@@ -22,17 +22,37 @@ your user only (no admin rights) and keeps itself up to date. Windows 10 or 11, 
   close OneDrive; each is undone when dimming ends.
 - **Game profiles:** per game darkness, dim method, extra monitors to keep bright (e.g. Discord's),
   lighting and actions. Anything not set follows the defaults.
+- **Game art:** recent games and profiles shown with their covers, and the game you're playing on Home.
+  Steam games use the art Steam already keeps on your PC. For other games, add your own free
+  SteamGridDB key in Settings (optional, personal use).
 - **Real brightness (DDC/CI):** turn down the monitor's own backlight instead of, or as well as, the
   overlay, in a short eased fade with at least 100 ms between monitor commands. Original levels are
-  saved first and put back even after a crash.
+  saved first and put back even after a crash. Dimmed monitors can also lower contrast and
+  saturation where they support it, and OSD-safe mode sends commands more slowly for monitors that
+  freeze or flash their menu on quick changes.
+- **OLED protection:** slowly drifts a faint lighter band across the black overlay, so no pixel sits
+  at the same level for hours.
 - **Mouse lock:** keeps the cursor on the fullscreen game's monitor while the game is in focus;
   never overrides a game's own cursor lock.
 - **Idle dimming:** darkens a monitor the mouse and active window have left alone for a few minutes
   (burn-in protection), and wakes it as soon as the mouse moves onto it.
 - **Night mode:** a warm, dimmer tint on side monitors (or all) on a schedule; on/off from the tray.
+- **Focus mode:** outside games, dims everything except the window you are working in, on every
+  monitor, optionally following the window under the mouse; also in the tray menu.
+- **Isolate shortcut** (Ctrl+Alt+I): turns everything pitch-black except the window in front,
+  lighting included. Press it again to undo.
+- **Keep videos lit:** recognised media players and browser windows with video-service titles stay
+  lit on a dimmed monitor.
+- **Peek:** a title change briefly reveals that window at half brightness (overlay dimming only).
+  Best effort, since not every app changes its title for a new message.
+- **Display zones:** split a monitor left/right or top/bottom. During a game or manual dim, the
+  cursor's zone stays bright and the display's other zones are dimmed.
+- **Creator mode:** detects streaming and recording through OBS WebSocket v5 or Streamlabs Desktop,
+  shows it on Home, and can lock the cursor to the active monitor and silence Shadeplay's
+  notifications while live. The OBS password is stored encrypted for your Windows account.
 - **Game mode:** raises the game's priority and closes listed apps (launchers, updaters) while
   playing, reopening them afterwards. The launcher that started the game is never closed.
-- **Tray:** pause for 30 min / 1 h / 2 h, night mode, dim now.
+- **Tray:** pause for 30 min / 1 h / 2 h, night mode, focus mode, dim now.
 - **Settings backup:** export and import all settings, profiles and lists.
 - **Welcome screen:** on first run, shows the monitors, games, Razer, Wallpaper Engine and
   Rainmeter it found and suggests matching settings.
@@ -41,8 +61,8 @@ your user only (no admin rights) and keeps itself up to date. Windows 10 or 11, 
 - **Play stats:** time per game, sessions, longest session, the last 14 days; stored locally in
   `sessions.jsonl`.
 - **Graphite and amber design:** a sidebar with Home, Games, Monitors, Lighting, Automations, Stats
-  and Settings; the Home page shows what is dimmed right now on a to-scale map of your monitors.
-  Dark (default), light or follow Windows. Uses the Exo 2 font (SIL Open Font License,
+  and Settings, under a themed title bar; the Home page shows what is dimmed right now on a
+  to-scale map of your monitors. Dark (default), light or follow Windows. Uses the Exo 2 font (SIL Open Font License,
   `assets/fonts/OFL.txt`).
 - **Exceptions** (Discord, OBS...): never trigger dimming, and their windows are cut out of the
   overlay so they stay fully visible on a dimmed monitor.
@@ -70,7 +90,7 @@ Installing and updating use [Velopack](https://velopack.io). The `vpk` packaging
 local .NET tool of this repository (`.config/dotnet-tools.json`).
 
 ```
-.\scripts\release.ps1 -Version 0.2.3 -Publish
+.\scripts\release.ps1 -Version 0.9.3 -Publish
 ```
 
 builds the release and publishes it on GitHub (using the `gh` CLI login); without `-Publish` it
@@ -101,8 +121,8 @@ Settings and a small troubleshooting log live in `%AppData%\Shadeplay\`.
 | `Core/Rgb/` | Razer Chroma and OpenRGB clients |
 | `Themes/` | Dark and light palettes, control templates |
 | `Interop/` | Win32 / DWM / DisplayConfig declarations |
-| `Platform/` | Tray icon, global shortcut, startup entry, theme, mouse lock, updater |
-| `UI/` | Settings window, profiles, stats, app list editor, running-app picker |
+| `Platform/` | Tray icon, global shortcut, startup entry, theme, mouse lock, updater, OBS and Streamlabs sync |
+| `UI/` | Settings window, Home, profiles, stats, welcome screen, app list editor, running-app picker |
 | `scripts/` | Release and icon scripts |
 
 ## License

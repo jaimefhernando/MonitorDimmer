@@ -286,7 +286,16 @@ public sealed class AppSettings : ObservableObject
         get => DpapiSecret.Unprotect(obsPasswordProtected);
         set => Set(ref obsPasswordProtected, DpapiSecret.Protect(value ?? ""), nameof(ObsPassword));
     }
+    string steamGridDbKeyProtected = "";
     public string ObsPasswordProtected { get => obsPasswordProtected; set => Set(ref obsPasswordProtected, value ?? ""); }
+    /// <summary>The user's own SteamGridDB key, encrypted in the settings file like the OBS password.</summary>
+    [JsonIgnore]
+    public string SteamGridDbKey
+    {
+        get => DpapiSecret.Unprotect(steamGridDbKeyProtected);
+        set => Set(ref steamGridDbKeyProtected, DpapiSecret.Protect(value ?? ""), nameof(SteamGridDbKey));
+    }
+    public string SteamGridDbKeyProtected { get => steamGridDbKeyProtected; set => Set(ref steamGridDbKeyProtected, value ?? ""); }
     public bool StreamlabsEnabled { get => streamlabsEnabled; set => Set(ref streamlabsEnabled, value); }
     /// <summary>Slowly drift a faint gradient across dimmed screens so no pixel stays at one level.</summary>
     public bool OledProtect { get => oledProtect; set => Set(ref oledProtect, value); }
