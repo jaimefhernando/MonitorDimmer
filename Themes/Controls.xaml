@@ -373,6 +373,12 @@
         </Setter>
     </Style>
 
+    <!-- Frame around a row of Segment radio buttons -->
+    <Style x:Key="SegmentBox" TargetType="Border">
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
     <!-- PasswordBox: looks like a TextBox -->
     <Style TargetType="PasswordBox">
         <Setter Property="Foreground" Value="{DynamicResource TextMain}" />

@@ -19,6 +19,10 @@ public partial class HomeView : UserControl
     DimController controller = null!;
     Action<string?> openProfile = _ => { };
     Action openStats = () => { };
+    string sceneStripKey = "";
+
+    /// <summary>Shows the Scenes page.</summary>
+    public Action OpenScenes { get; set; } = () => { };
 
     public HomeView()
     {
@@ -50,6 +54,7 @@ public partial class HomeView : UserControl
         controller.Sessions.HistoryChanged += OnHistoryChanged;
         settings.Changed += OnSettingsChanged;
         GameArt.Changed += OnArtChanged;
+        ShowScenes();
         Refresh();
         RefreshStats();
     }
@@ -64,7 +69,39 @@ public partial class HomeView : UserControl
     void OnSettingsChanged(string? name)
     {
         if (name == nameof(AppSettings.Enabled)) Refresh();
+        if (name is nameof(AppSettings.Scenes) or nameof(AppSettings.ActiveSceneId)) ShowScenes();
     }
+
+    /// <summary>Normal and each scene as one row of buttons; rebuilt only when they change.</summary>
+    void ShowScenes()
+    {
+        string active = settings.ActiveScene?.Id ?? "";
+        var entries = new List<(string Id, string Name)> { ("", "Normal") };
+        entries.AddRange(settings.Scenes.Select(s => (s.Id, s.Name)));
+        string key = active + "|" + string.Join(";", entries.Select(x => x.Id + "=" + x.Name));
+        if (key == sceneStripKey) return;
+        sceneStripKey = key;
+
+        SceneStrip.Children.Clear();
+        foreach (var (id, name) in entries)
+        {
+            var button = new RadioButton
+            {
+                Content = name,
+                GroupName = "HomeScene",
+                IsChecked = id == active,
+                MinWidth = 112,
+                Style = (Style)FindResource("Segment"),
+            };
+            button.Checked += (_, _) =>
+            {
+                if ((settings.ActiveScene?.Id ?? "") != id) controller.SetScene(id);
+            };
+            SceneStrip.Children.Add(button);
+        }
+    }
+
+    void EditScenes_Click(object sender, RoutedEventArgs e) => OpenScenes();
 
     /// <summary>Releases event subscriptions. Called by the host window on close.</summary>
     public void Detach()

@@ -19,6 +19,7 @@ public partial class App : Application
     DimController controller = null!;
     HotkeyManager hotkeys = null!;
     HotkeyManager isolateHotkey = null!;
+    HotkeyManager sceneHotkey = null!;
     ObsSync obs = null!;
     StreamlabsSync streamlabs = null!;
     TrayIcon tray = null!;
@@ -71,6 +72,13 @@ public partial class App : Application
         isolateHotkey = new HotkeyManager();
         isolateHotkey.Pressed += controller.ToggleIsolate;
         ApplyIsolateHotkey();
+        sceneHotkey = new HotkeyManager();
+        sceneHotkey.Pressed += () =>
+        {
+            var scene = controller.NextScene();
+            SceneToast.ShowOn(scene?.Name ?? "Normal", "SCENE");
+        };
+        ApplySceneHotkey();
         tray = new TrayIcon(controller, settings, ShowSettings, () => ExitApp());
         StartupManager.Apply(settings.StartWithWindows);
 
@@ -128,6 +136,9 @@ public partial class App : Application
             case nameof(AppSettings.IsolateHotkeyEnabled):
                 ApplyIsolateHotkey();
                 break;
+            case nameof(AppSettings.SceneHotkeyEnabled):
+                ApplySceneHotkey();
+                break;
             case nameof(AppSettings.StartWithWindows):
                 StartupManager.Apply(settings.StartWithWindows);
                 break;
@@ -156,6 +167,13 @@ public partial class App : Application
         if (!settings.IsolateHotkeyEnabled) isolateHotkey.Unregister();
         else if (!isolateHotkey.Register(AppSettings.ModControl | AppSettings.ModAlt, 0x49))
             Log.Write("Ctrl+Alt+I is already used by another app");
+    }
+
+    void ApplySceneHotkey()
+    {
+        if (!settings.SceneHotkeyEnabled) sceneHotkey.Unregister();
+        else if (!sceneHotkey.Register(AppSettings.ModControl | AppSettings.ModAlt, 0x53))
+            Log.Write("Ctrl+Alt+S is already used by another app");
     }
 
     void ApplyHotkey()
@@ -220,6 +238,7 @@ public partial class App : Application
         controller.Dispose();
         hotkeys.Dispose();
         isolateHotkey.Dispose();
+        sceneHotkey?.Dispose();
         obs.Dispose();
         streamlabs.Dispose();
         tray.Dispose();

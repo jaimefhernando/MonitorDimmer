@@ -34,6 +34,7 @@ public sealed class DimController : IDisposable
     readonly Dictionary<string, (MonitorInfo Monitor, int Strength, int Extras)> brightnessDimmed = new();
     readonly ActionRunner actions = new();
     readonly MouseLock mouseLock = new();
+    readonly NowPlaying nowPlaying = new();
     WindowEventHook? windowEvents;
 
     // The session in progress: which app started it and the plan its actions were run with
@@ -122,6 +123,28 @@ public sealed class DimController : IDisposable
         Update();
     }
 
+    /// <summary>The scene in effect now: the game's own, else the one picked; null for Normal.</summary>
+    public Scene? CurrentScene { get; private set; }
+
+    Scene? SceneFor(GameProfile? profile) =>
+        (profile?.SceneId is { Length: > 0 } id ? settings.FindScene(id) : null) ?? settings.ActiveScene;
+
+    SessionPlan Plan(GameProfile? profile) => SessionPlan.Resolve(settings, profile, SceneFor(profile));
+
+    /// <param name="id">A scene's id, or empty for Normal.</param>
+    public void SetScene(string id) => settings.ActiveSceneId = settings.FindScene(id) != null ? id : "";
+
+    /// <summary>Switches to the next scene, after the last back to Normal.</summary>
+    /// <returns>The scene now picked; null for Normal.</returns>
+    public Scene? NextScene()
+    {
+        var ids = new List<string> { "" };
+        ids.AddRange(settings.Scenes.Select(s => s.Id));
+        int index = ids.IndexOf(settings.ActiveScene?.Id ?? "");
+        settings.ActiveSceneId = ids[(index + 1) % ids.Count];
+        return settings.ActiveScene;
+    }
+
     public MonitorBrightness Brightness { get; } = new();
     public SessionTracker Sessions { get; } = new();
 
@@ -193,7 +216,13 @@ public sealed class DimController : IDisposable
         Update();
     }
 
-    bool NightScheduled(DateTime now) => settings.NightEnabled && settings.IsNightTime(now);
+    /// <summary>What the schedule, or the scene in effect, says about night mode.</summary>
+    bool NightScheduled(DateTime now) => CurrentScene?.Night switch
+    {
+        ProfileSwitch.On => true,
+        ProfileSwitch.Off => false,
+        _ => settings.NightEnabled && settings.IsNightTime(now),
+    };
 
     bool NightNow(DateTime now)
     {
@@ -243,7 +272,7 @@ public sealed class DimController : IDisposable
 
     /// <summary>Shows the lighting used while dimming for a few seconds.</summary>
     public void PreviewLighting() =>
-        actions.PreviewRgb(sessionPlan ?? SessionPlan.Resolve(settings, null), IsDimming);
+        actions.PreviewRgb(sessionPlan ?? Plan(null), IsDimming);
 
     public void Update()
     {
@@ -350,10 +379,14 @@ public sealed class DimController : IDisposable
         }
         else if (key != null)
         {
-            // Same session: pick up profile edits (darkness, monitors) right away
-            sessionPlan = SessionPlan.Resolve(settings, profile);
+            // Same session: pick up profile and scene changes (darkness, monitors, lighting) right away
+            var next = Plan(profile);
+            if (sessionPlan != null && (next.Rgb != sessionPlan.Rgb || next.RgbOptions != sessionPlan.RgbOptions))
+                actions.ChangeRgb(next);
+            sessionPlan = next;
         }
         var plan = sessionPlan;
+        CurrentScene = SceneFor(profile);
 
         // 3. For each monitor the first that applies: game dimming (overlay and/or its own
         //    brightness), idle dimming, night tint
@@ -503,6 +536,21 @@ public sealed class DimController : IDisposable
         RECT? lockArea = gameLock ? triggerMonitor!.Bounds : liveMonitor?.Bounds;
         mouseLock.Apply(lockCursor ? lockArea : null);
 
+        // 5. The quiet side display: on the first monitor dimmed with the black overlay
+        bool sideDisplay = plan?.SideDisplay == true && isolated == null;
+        string? sideId = sideDisplay
+            ? states.FirstOrDefault(s => s.Kind == MonitorDimKind.Dimmed && overlayIds.Contains(s.Monitor.Id))?.Monitor.Id
+            : null;
+        if (sideId != null && settings.SideDisplayMedia) nowPlaying.Refresh();
+        else nowPlaying.Clear();
+        var info = sideId == null ? null : new OverlayInfo(
+            now.ToString("t"),
+            SessionName != null && SessionStartedAt is DateTime begun ? $"{SessionName} · {SessionTracker.Format(now - begun)}" : "",
+            settings.SideDisplayMedia ? nowPlaying.Text : "",
+            settings.SideDisplayLevel);
+        foreach (var (id, overlay) in overlays) overlay.SetInfo(id == sideId ? info : null);
+        SideDisplayMonitor = sideId == null ? null : monitors.FirstOrDefault(m => m.Id == sideId);
+
         foreach (var (id, dimmed) in brightnessDimmed.ToList())
         {
             if (brightnessIds.Contains(id)) continue;
@@ -545,8 +593,10 @@ public sealed class DimController : IDisposable
 
         // What the Home page and tray show
         var extrasNow = new List<string>();
+        if (CurrentScene != null) extrasNow.Add($"{CurrentScene.Name} scene");
         if (plan != null)
         {
+            if (SideDisplayMonitor != null) extrasNow.Add($"Side display on Display {SideDisplayMonitor.Number}");
             if (states.Any(s => s.UsesBrightness)) extrasNow.Add("Real brightness · DDC/CI");
             if (plan.Rgb) extrasNow.Add(plan.RgbOptions.Style == RgbStyle.Off ? "RGB lights off" : "RGB dimmed");
             if (plan.WallpaperEngine) extrasNow.Add("Wallpaper Engine paused");
@@ -575,6 +625,9 @@ public sealed class DimController : IDisposable
     /// <summary>Each monitor and what is happening to it, as of the last update.</summary>
     public IReadOnlyList<MonitorState> Monitors { get; private set; } = Array.Empty<MonitorState>();
 
+    /// <summary>The monitor showing the quiet side display, if any.</summary>
+    public MonitorInfo? SideDisplayMonitor { get; private set; }
+
     /// <summary>The game or app the current session is for; null when not dimming for one.</summary>
     public string? SessionName { get; private set; }
     public DateTime? SessionStartedAt { get; private set; }
@@ -589,7 +642,7 @@ public sealed class DimController : IDisposable
     void BeginSession(string key, GameProfile? profile, WindowInfo? trigger)
     {
         sessionKey = key;
-        sessionPlan = SessionPlan.Resolve(settings, profile);
+        sessionPlan = Plan(profile);
         SessionName = trigger != null ? DisplayName(trigger, profile) : null;
         SessionExe = trigger?.ProcessName;
         SessionExePath = trigger?.ExePath;

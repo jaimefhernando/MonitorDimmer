@@ -16,6 +16,7 @@ internal sealed class TrayIcon : IDisposable
     readonly ToolStripMenuItem night;
     readonly ToolStripMenuItem focus;
     readonly ToolStripMenuItem isolate;
+    readonly ToolStripMenuItem scene;
     readonly ToolStripLabel header;
     readonly ToolStripLabel headerDetail;
 
@@ -37,6 +38,7 @@ internal sealed class TrayIcon : IDisposable
             new ToolStripMenuItem("Until I resume", null, (_, _) => controller.PauseFor(null)),
         });
         resume = new ToolStripMenuItem("Resume", null, (_, _) => controller.Resume());
+        scene = new ToolStripMenuItem("Scene");
         var settings = new ToolStripMenuItem("Open Shadeplay", null, (_, _) => openSettings()) { Font = BoldMenuFont() };
         // What is happening right now, as in the app's Home page
         header = new ToolStripLabel { Font = BoldMenuFont(), Padding = new Padding(4, 6, 4, 2) };
@@ -46,7 +48,7 @@ internal sealed class TrayIcon : IDisposable
         menu.Items.AddRange(new ToolStripItem[]
         {
             header, headerDetail, new ToolStripSeparator(),
-            dimNow, isolate, focus, night, pause, resume, new ToolStripSeparator(),
+            scene, dimNow, isolate, focus, night, pause, resume, new ToolStripSeparator(),
             settings, new ToolStripMenuItem("Exit", null, (_, _) => exit()),
         });
         menu.Opening += (_, _) => Refresh();
@@ -79,6 +81,16 @@ internal sealed class TrayIcon : IDisposable
         pause.Visible = !paused;
         resume.Visible = paused;
         resume.Text = controller.PausedUntil is DateTime until ? $"Resume (paused until {until:HH:mm})" : "Resume";
+
+        string active = appSettings.ActiveScene?.Id ?? "";
+        scene.Text = "Scene: " + (appSettings.ActiveScene?.Name ?? "Normal");
+        scene.DropDownItems.Clear();
+        scene.DropDownItems.Add(new ToolStripMenuItem("Normal", null, (_, _) => controller.SetScene("")) { Checked = active == "" });
+        foreach (var s in appSettings.Scenes)
+        {
+            string id = s.Id;
+            scene.DropDownItems.Add(new ToolStripMenuItem(s.Name, null, (_, _) => controller.SetScene(id)) { Checked = active == id });
+        }
 
         var dimmed = controller.Monitors.Where(m => m.Kind == MonitorDimKind.Dimmed).ToList();
         if (controller.SessionName != null)
@@ -120,6 +132,8 @@ internal sealed class TrayIcon : IDisposable
         // The Pause submenu is its own drop-down and needs the same look
         pause.DropDown.Renderer = menu.Renderer;
         pause.DropDown.ForeColor = menu.ForeColor;
+        scene.DropDown.Renderer = menu.Renderer;
+        scene.DropDown.ForeColor = menu.ForeColor;
     }
 
     static Font BoldMenuFont() =>

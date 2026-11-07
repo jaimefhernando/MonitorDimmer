@@ -2,7 +2,9 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- Windows 10 SDK projections: for the media controls (now playing) -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <UseWPF>true</UseWPF>
     <!-- WinForms is used only for the tray icon and the overlay windows -->
     <UseWindowsForms>true</UseWindowsForms>
@@ -14,7 +16,7 @@
     <Product>Shadeplay</Product>
     <Copyright>Copyright (c) 2026 jaimefhernando. MIT License.</Copyright>
     <!-- scripts\release.ps1 overrides this with -p:Version -->
-    <Version>0.10.0</Version>
+    <Version>0.11.0</Version>
     <ApplicationIcon>assets\app.ico</ApplicationIcon>
     <!-- Velopack must run before WPF starts, so Main lives in Program.cs -->
     <StartupObject>Shadeplay.Program</StartupObject>

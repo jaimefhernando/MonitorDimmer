@@ -25,6 +25,11 @@ your user only (no admin rights) and keeps itself up to date. Windows 10 or 11, 
 - **Game art:** recent games and profiles shown with their covers, and the game you're playing on Home.
   Steam games use the art Steam already keeps on your PC. For other games, add your own free
   SteamGridDB key in Settings (optional, personal use).
+- **Play:** start a recent game from its cover, the banner or its profile (Steam games through Steam).
+- **Scenes:** Competitive, Late night, Streaming or your own: darkness, lighting, mouse lock, night tint and side
+  display in one click, from Home, the tray or Ctrl+Alt+S. A game's profile can always use one scene.
+- **Quiet side display:** instead of plain black, a dimmed monitor can show a faint clock, session time and
+  what's playing, drifting slowly so nothing burns in.
 - **Real brightness (DDC/CI):** turn down the monitor's own backlight instead of, or as well as, the
   overlay, in a short eased fade with at least 100 ms between monitor commands. Original levels are
   saved first and put back even after a crash. Dimmed monitors can also lower contrast and

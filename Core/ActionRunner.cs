@@ -70,6 +70,24 @@ internal sealed class ActionRunner : IDisposable
         });
     }
 
+    /// <summary>The lighting changed during a session, e.g. another scene was picked.</summary>
+    public void ChangeRgb(SessionPlan plan)
+    {
+        Enqueue(async () =>
+        {
+            if (plan.Rgb)
+            {
+                await rgb.ApplyAsync(plan.RgbOptions);
+                appliedRgb = plan.RgbOptions;
+            }
+            else if (appliedRgb != null)
+            {
+                await rgb.RestoreAsync(appliedRgb);
+                appliedRgb = null;
+            }
+        });
+    }
+
     /// <summary>Shows the dimming lighting for a few seconds, unless dimming is on anyway.</summary>
     public void PreviewRgb(SessionPlan plan, bool dimmingActive)
     {

@@ -4,6 +4,10 @@ using Shadeplay.Interop;
 
 namespace Shadeplay.Core;
 
+/// <summary>What the quiet side display shows.</summary>
+/// <param name="Level">How bright the text looks on screen, in percent of white.</param>
+internal sealed record OverlayInfo(string Clock, string Line, string Media, int Level);
+
 /// <summary>
 /// Black, click-through, always-on-top window covering one monitor. Its opacity is the dim
 /// strength; exception windows are cut out of it so they stay fully visible.
@@ -23,6 +27,8 @@ internal sealed class OverlayForm : Form
     readonly System.Windows.Forms.Timer driftTimer = new() { Interval = 30_000 };
     bool drift;
     double driftPos;
+
+    OverlayInfo? info;
 
     double fadeFrom, fadeTo = -1;
     DateTime fadeStart;
@@ -104,9 +110,60 @@ internal sealed class OverlayForm : Form
         Invalidate();
     }
 
+    /// <summary>Shows a faint clock and session line on this overlay, or nothing.</summary>
+    public void SetInfo(OverlayInfo? value)
+    {
+        if (Equals(value, info)) return;
+        info = value;
+        Invalidate();
+    }
+
     protected override void OnPaint(PaintEventArgs e)
     {
         e.Graphics.Clear(BackColor);
+        PaintDrift(e.Graphics);
+        if (info != null) PaintInfo(e.Graphics, info);
+    }
+
+    /// <summary>
+    /// The window is see-through at its opacity, so the text is drawn brighter by the same
+    /// amount to look as bright as asked. It wanders slowly so no pixel stays lit for hours.
+    /// </summary>
+    void PaintInfo(Graphics g, OverlayInfo show)
+    {
+        int w = ClientSize.Width, h = ClientSize.Height;
+        if (w <= 0 || h <= 0) return;
+        double opacity = Math.Max(0.2, fadeTo > 0 ? fadeTo : Opacity);
+        int level = (int)Math.Clamp(show.Level / 100.0 * 255 / opacity, 0, 255);
+        using var main = new SolidBrush(Color.FromArgb(level, level, level));
+        using var soft = new SolidBrush(Color.FromArgb(level * 3 / 4, level * 3 / 4, level * 3 / 4));
+        float scale = Math.Clamp(h / 1080f, 0.6f, 2.5f);
+        using var clockFont = Platform.WinFormsFonts.Create(110 * scale, FontStyle.Bold);
+        using var lineFont = Platform.WinFormsFonts.Create(26 * scale);
+        using var mediaFont = Platform.WinFormsFonts.Create(22 * scale);
+        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+
+        var lines = new List<(string Text, Font Font, Brush Brush)> { (show.Clock, clockFont, main) };
+        if (show.Line.Length > 0) lines.Add((show.Line, lineFont, soft));
+        if (show.Media.Length > 0) lines.Add(("♪  " + show.Media, mediaFont, soft));
+        float maxWidth = w * 0.6f;
+        var sizes = lines.Select(l => g.MeasureString(l.Text, l.Font, (int)maxWidth)).ToList();
+        float blockW = sizes.Max(s => s.Width), blockH = sizes.Sum(s => s.Height);
+
+        double minutes = DateTime.Now.Ticks / (double)TimeSpan.TicksPerMinute;
+        float margin = 60 * scale;
+        float x = margin + (float)((w - blockW - 2 * margin) * (0.5 + 0.5 * Math.Sin(minutes / 9.0)));
+        float y = margin + (float)((h - blockH - 2 * margin) * (0.5 + 0.5 * Math.Cos(minutes / 13.0)));
+        using var format = new StringFormat { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
+        for (int i = 0; i < lines.Count; i++)
+        {
+            g.DrawString(lines[i].Text, lines[i].Font, lines[i].Brush, new RectangleF(x, y, maxWidth, sizes[i].Height), format);
+            y += sizes[i].Height;
+        }
+    }
+
+    void PaintDrift(Graphics g)
+    {
         if (!drift || ClientSize.Width <= 0) return;
         int w = ClientSize.Width, band = Math.Max(1, w * 2 / 5);
         int x = (int)(driftPos * w) - band;
@@ -119,7 +176,7 @@ internal sealed class OverlayForm : Form
                 Positions = new[] { 0f, 0.5f, 1f },
             },
         };
-        e.Graphics.FillRectangle(brush, new Rectangle(x, 0, band, ClientSize.Height));
+        g.FillRectangle(brush, new Rectangle(x, 0, band, ClientSize.Height));
     }
 
     /// <summary>Restricts this overlay to one screen-space rectangle, for a notification peek.</summary>
@@ -180,6 +237,9 @@ internal sealed class OverlayForm : Form
     {
         opacity = Math.Clamp(opacity, 0, MaxOpacity);
         if (Math.Abs(opacity - fadeTo) < 0.001) return;
+        // The text is drawn for the target opacity; on the way out it would flash brighter
+        if (opacity <= 0.001) info = null;
+        if (info != null || opacity <= 0.001) Invalidate();
 
         fadeFrom = Opacity;
         fadeTo = opacity;

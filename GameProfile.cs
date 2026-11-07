@@ -54,6 +54,7 @@ public sealed class GameProfile : ObservableObject
     bool closeOneDrive;
     bool boostPriority;
     bool closeApps = true;
+    string sceneId = "";
 
     public GameProfile()
     {
@@ -107,4 +108,6 @@ public sealed class GameProfile : ObservableObject
     public bool BoostPriority { get => boostPriority; set => Set(ref boostPriority, value); }
     /// <summary>Close the apps on the Actions tab's list.</summary>
     public bool CloseApps { get => closeApps; set => Set(ref closeApps, value); }
+    /// <summary>A scene this game always uses; empty follows the scene picked on Home.</summary>
+    public string SceneId { get => sceneId; set => Set(ref sceneId, value ?? ""); }
 }

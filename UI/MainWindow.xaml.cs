@@ -61,6 +61,8 @@ public partial class MainWindow : Window
         ModeBox.ItemsSource = Modes;
         Home.Init(settings, controller, OpenProfile, () => Nav.SelectedItem = StatsTab);
         Profiles.Init(settings, controller);
+        Scenes.Init(settings, controller);
+        Home.OpenScenes = () => Nav.SelectedItem = ScenesTab;
         settings.Profiles.CollectionChanged += (_, _) => ShowGamesCount();
         Profiles.DetailChanged += open =>
         {

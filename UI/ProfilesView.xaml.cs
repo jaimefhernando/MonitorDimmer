@@ -38,9 +38,18 @@ public partial class ProfilesView : UserControl
     }
 
     /// <summary>A cover on the Recently played shelf.</summary>
-    public sealed record RecentTile(ShelfGame Game, string Mono, string Meta, ImageSource? Cover, Visibility BadgeVisibility, string Hint)
+    public sealed record RecentTile(ShelfGame Game, string Mono, string Meta, ImageSource? Cover, Visibility BadgeVisibility, string Hint,
+        Visibility PlayVisibility)
     {
         public string Name => Game.Name;
+        public string PlayName => "Play " + Game.Name;
+    }
+
+    /// <summary>An entry in a profile's scene list.</summary>
+    public sealed record SceneChoice(string Id, string Name)
+    {
+        // The themed combo box shows the item itself in its closed state
+        public override string ToString() => Name;
     }
 
     const int RecentCount = 6;
@@ -48,6 +57,7 @@ public partial class ProfilesView : UserControl
     AppSettings settings = null!;
     DimController controller = null!;
     ShelfGame? bannerGame;
+    bool loadingScene;
 
     /// <summary>Raised when a game is opened or closed, so the page can hide what's below it.</summary>
     public event Action<bool>? DetailChanged;
@@ -73,8 +83,37 @@ public partial class ProfilesView : UserControl
         controller.Sessions.HistoryChanged += OnArtOrHistoryChanged;
         controller.StateChanged += OnArtOrHistoryChanged;
         GameArt.Changed += OnArtOrHistoryChanged;
+        settings.Changed += OnSettingsChanged;
         UpdateEmptyState();
         RefreshShelf();
+    }
+
+    void OnSettingsChanged(string name)
+    {
+        if (name == nameof(AppSettings.Scenes)) ShowScene();
+    }
+
+    /// <summary>Fills the selected profile's scene list and picks its scene.</summary>
+    void ShowScene()
+    {
+        loadingScene = true;
+        try
+        {
+            var choices = new List<SceneChoice> { new("", "Whatever scene is picked") };
+            choices.AddRange(settings.Scenes.Select(s => new SceneChoice(s.Id, s.Name)));
+            SceneBox.ItemsSource = choices;
+            string id = (ProfileList.SelectedItem as GameProfile)?.SceneId ?? "";
+            SceneBox.SelectedValue = choices.Any(c => c.Id == id) ? id : "";
+        }
+        finally
+        {
+            loadingScene = false;
+        }
+    }
+
+    void SceneBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!loadingScene && ProfileList.SelectedItem is GameProfile p && SceneBox.SelectedValue is string id) p.SceneId = id;
     }
 
     void OnProfilesChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -116,12 +155,16 @@ public partial class ProfilesView : UserControl
             BannerTitle.Text = bannerGame.Name;
             BannerDetail.Text = running != null ? controller.Status : Describe(bannerGame);
             BannerButton.Content = ProfileFor(bannerGame) != null ? "Edit profile" : "Make a profile";
+            BannerPlay.Visibility = running == null && GameLauncher.CanLaunch(bannerGame.Game, bannerGame.ExePath)
+                ? Visibility.Visible : Visibility.Collapsed;
+            ResetPlay(BannerPlay);
         }
 
         var tiles = recent.Select(g => new RecentTile(g, MonogramConverter.Of(g.Name), Describe(g),
             ArtImages.Load(FindArt(g).BestCover, 264),
             ProfileFor(g) != null ? Visibility.Visible : Visibility.Collapsed,
-            ProfileFor(g) != null ? "Edit profile" : "Make a profile")).ToList();
+            ProfileFor(g) != null ? "Edit profile" : "Make a profile",
+            controller.SessionName == null && GameLauncher.CanLaunch(g.Game, g.ExePath) ? Visibility.Visible : Visibility.Collapsed)).ToList();
         RecentList.ItemsSource = tiles;
         RecentShelf.Visibility = tiles.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
@@ -180,6 +223,51 @@ public partial class ProfilesView : UserControl
 
     void Back_Click(object sender, RoutedEventArgs e) => ProfileList.SelectedItem = null;
 
+    void BannerPlay_Click(object sender, RoutedEventArgs e)
+    {
+        if (bannerGame != null) Play(BannerPlay, bannerGame.Game, bannerGame.ExePath);
+    }
+
+    void RecentPlay_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: RecentTile tile } button) Play(button, tile.Game.Game, tile.Game.ExePath);
+    }
+
+    void DetailPlay_Click(object sender, RoutedEventArgs e)
+    {
+        if (ProfileList.SelectedItem is GameProfile p) Play(DetailPlay, GameOf(p), p.ExePath);
+    }
+
+    static DetectedGame? GameOf(GameProfile p) =>
+        GameDetector.Identify(p.ExePath) ?? GameDetector.FindByName(p.Name)
+        ?? GameDetector.Identify(GameDetector.PathOfExe(p.ExeName));
+
+    /// <summary>Starts the game; the button says so for a few seconds, since games take a while to show.</summary>
+    void Play(Button button, DetectedGame? game, string exePath)
+    {
+        if (!GameLauncher.Launch(game, exePath))
+        {
+            MessageBox.Show(Window.GetWindow(this)!, "Shadeplay couldn't start this game. Start it from its launcher instead.",
+                "Play", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        button.IsEnabled = false;
+        if (button.Content is StackPanel { Children: [_, TextBlock label] }) label.Text = "Starting…";
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            ResetPlay(button);
+        };
+        timer.Start();
+    }
+
+    static void ResetPlay(Button button)
+    {
+        button.IsEnabled = true;
+        if (button.Content is StackPanel { Children: [_, TextBlock label] }) label.Text = "Play";
+    }
+
     void SeeAll_Click(object sender, RoutedEventArgs e) => ShowAllRequested?.Invoke();
 
     /// <summary>The tile list never scrolls itself, so the wheel scrolls the page.</summary>
@@ -208,7 +296,11 @@ public partial class ProfilesView : UserControl
     /// <summary>Releases event subscriptions. Called by the host window on close.</summary>
     public void Detach()
     {
-        if (settings != null) settings.Profiles.CollectionChanged -= OnProfilesChanged;
+        if (settings != null)
+        {
+            settings.Profiles.CollectionChanged -= OnProfilesChanged;
+            settings.Changed -= OnSettingsChanged;
+        }
         if (controller != null)
         {
             controller.Sessions.HistoryChanged -= OnArtOrHistoryChanged;
@@ -279,6 +371,13 @@ public partial class ProfilesView : UserControl
         RefreshMonitors();
         UpdateEmptyState();
         ShowDetailArt();
+        ShowScene();
+        if (ProfileList.SelectedItem is GameProfile p)
+        {
+            DetailPlay.Visibility = controller.SessionName == null && GameLauncher.CanLaunch(GameOf(p), p.ExePath)
+                ? Visibility.Visible : Visibility.Collapsed;
+            ResetPlay(DetailPlay);
+        }
     }
 
     static string SuggestName(AppPickerWindow.RunningApp app)

@@ -192,6 +192,12 @@ public sealed class AppSettings : ObservableObject
     bool notifyOnDim = true;
     bool notifyOnSessionEnd = true;
     bool notifyOnUpdate = true;
+    bool sideDisplayEnabled;
+    bool sideDisplayMedia = true;
+    int sideDisplayLevel = 20;
+    ObservableCollection<Scene> scenes = Scene.Defaults();
+    string activeSceneId = "";
+    bool sceneHotkeyEnabled = true;
 
     public AppSettings()
     {
@@ -200,6 +206,7 @@ public sealed class AppSettings : ObservableObject
         Hook(monitors);
         Hook(profiles);
         Hook(closeApps);
+        Hook(scenes);
         PropertyChanged += (_, e) => Changed?.Invoke(e.PropertyName ?? "");
     }
 
@@ -335,6 +342,42 @@ public sealed class AppSettings : ObservableObject
     public bool NotifyOnSessionEnd { get => notifyOnSessionEnd; set => Set(ref notifyOnSessionEnd, value); }
     public bool NotifyOnUpdate { get => notifyOnUpdate; set => Set(ref notifyOnUpdate, value); }
 
+    /// <summary>A faint clock, session time and now playing on a dimmed monitor.</summary>
+    public bool SideDisplayEnabled { get => sideDisplayEnabled; set => Set(ref sideDisplayEnabled, value); }
+    public bool SideDisplayMedia { get => sideDisplayMedia; set => Set(ref sideDisplayMedia, value); }
+    /// <summary>How bright the side display's text looks, in percent of white.</summary>
+    public int SideDisplayLevel { get => sideDisplayLevel; set => Set(ref sideDisplayLevel, Math.Clamp(value, 5, 50)); }
+
+    public ObservableCollection<Scene> Scenes
+    {
+        get => scenes;
+        set
+        {
+            SetList(ref scenes, value);
+            MarkActiveScene();
+        }
+    }
+
+    /// <summary>The scene in use; empty for Normal.</summary>
+    public string ActiveSceneId
+    {
+        get => activeSceneId;
+        set
+        {
+            if (Set(ref activeSceneId, value ?? "")) MarkActiveScene();
+        }
+    }
+
+    void MarkActiveScene()
+    {
+        foreach (var s in scenes) s.IsActive = s.Id == activeSceneId;
+    }
+    /// <summary>Ctrl+Alt+S switches to the next scene.</summary>
+    public bool SceneHotkeyEnabled { get => sceneHotkeyEnabled; set => Set(ref sceneHotkeyEnabled, value); }
+
+    public Scene? FindScene(string id) => id.Length == 0 ? null : scenes.FirstOrDefault(s => s.Id == id);
+    public Scene? ActiveScene => FindScene(activeSceneId);
+
     /// <summary>Whether <paramref name="now"/> falls in the night mode hours.</summary>
     public bool IsNightTime(DateTime now)
     {
@@ -413,11 +456,13 @@ public sealed class AppSettings : ObservableObject
         if (e.OldItems != null)
             foreach (var item in e.OldItems.OfType<INotifyPropertyChanged>()) item.PropertyChanged -= OnItemChanged;
         HookItems(e.NewItems);
+        if (sender == scenes) MarkActiveScene();
         Changed?.Invoke(sender == watchedApps ? nameof(WatchedApps)
             : sender == exceptionApps ? nameof(ExceptionApps)
             : sender == peekApps ? nameof(PeekApps)
             : sender == profiles ? nameof(Profiles)
-            : sender == closeApps ? nameof(CloseApps) : nameof(Monitors));
+            : sender == closeApps ? nameof(CloseApps)
+            : sender == scenes ? nameof(Scenes) : nameof(Monitors));
     }
 
     void OnItemChanged(object? sender, PropertyChangedEventArgs e)
@@ -425,6 +470,11 @@ public sealed class AppSettings : ObservableObject
         if (sender is GameProfile)
         {
             Changed?.Invoke(nameof(Profiles));
+            return;
+        }
+        if (sender is Scene)
+        {
+            if (e.PropertyName is not (nameof(Scene.Summary) or nameof(Scene.IsActive))) Changed?.Invoke(nameof(Scenes));
             return;
         }
         // Display-only properties are not settings

@@ -20,37 +20,22 @@ internal sealed record SessionPlan(
     bool ReopenClosedApps,
     bool MouseLock,
     string OnDimCommands,
-    string OnRestoreCommands)
+    string OnRestoreCommands,
+    bool SideDisplay)
 {
-    public static SessionPlan Resolve(AppSettings s, GameProfile? p)
+    /// <summary>The normal settings, then the scene, then the game's profile on top.</summary>
+    public static SessionPlan Resolve(AppSettings s, GameProfile? p, Scene? scene = null)
     {
         var rgb = RgbLighting.Options.From(s);
         bool rgbOn = s.RgbEnabled;
-        switch (p?.Lighting)
-        {
-            case ProfileLighting.Unchanged:
-                rgbOn = false;
-                break;
-            case ProfileLighting.Off:
-                rgbOn = true;
-                rgb = rgb with { Style = RgbStyle.Off };
-                break;
-            case ProfileLighting.Color:
-                rgbOn = true;
-                rgb = rgb with { Style = RgbStyle.Color, Color = p.RgbColor, Brightness = p.RgbBrightness };
-                break;
-        }
+        if (scene != null) (rgbOn, rgb) = ApplyLighting(rgbOn, rgb, scene.Lighting, scene.RgbColor, scene.RgbBrightness);
+        if (p != null) (rgbOn, rgb) = ApplyLighting(rgbOn, rgb, p.Lighting, p.RgbColor, p.RgbBrightness);
 
+        var method = ToMethod(p?.Method ?? ProfileDimMethod.Default) ?? ToMethod(scene?.Method ?? ProfileDimMethod.Default) ?? s.DimMethod;
         bool actions = p?.CustomActions == true;
         return new SessionPlan(
-            Strength: p?.CustomStrength == true ? p.Strength : null,
-            Method: p?.Method switch
-            {
-                ProfileDimMethod.Overlay => DimMethod.Overlay,
-                ProfileDimMethod.Brightness => DimMethod.Brightness,
-                ProfileDimMethod.Both => DimMethod.Both,
-                _ => s.DimMethod,
-            },
+            Strength: p?.CustomStrength == true ? p.Strength : scene?.CustomStrength == true ? scene.Strength : null,
+            Method: method,
             KeepBrightMonitorIds: p?.KeepBrightMonitorIds.ToHashSet() ?? new HashSet<string>(),
             Rgb: rgbOn,
             RgbOptions: rgb,
@@ -63,13 +48,33 @@ internal sealed record SessionPlan(
                 ? Array.Empty<string>()
                 : s.CloseApps.Select(WindowScanner.NormalizeExe).Where(n => n.Length > 0).ToList(),
             ReopenClosedApps: s.ReopenClosedApps,
-            MouseLock: p?.MouseLock switch
-            {
-                ProfileSwitch.On => true,
-                ProfileSwitch.Off => false,
-                _ => s.LockMouse,
-            },
+            MouseLock: Switch(p?.MouseLock) ?? Switch(scene?.MouseLock) ?? s.LockMouse,
             OnDimCommands: s.OnDimCommands,
-            OnRestoreCommands: s.OnRestoreCommands);
+            OnRestoreCommands: s.OnRestoreCommands,
+            SideDisplay: Switch(scene?.SideDisplay) ?? s.SideDisplayEnabled);
     }
+
+    static (bool On, RgbLighting.Options Options) ApplyLighting(bool on, RgbLighting.Options rgb,
+        ProfileLighting lighting, string color, int brightness) => lighting switch
+    {
+        ProfileLighting.Unchanged => (false, rgb),
+        ProfileLighting.Off => (true, rgb with { Style = RgbStyle.Off }),
+        ProfileLighting.Color => (true, rgb with { Style = RgbStyle.Color, Color = color, Brightness = brightness }),
+        _ => (on, rgb),
+    };
+
+    static DimMethod? ToMethod(ProfileDimMethod m) => m switch
+    {
+        ProfileDimMethod.Overlay => DimMethod.Overlay,
+        ProfileDimMethod.Brightness => DimMethod.Brightness,
+        ProfileDimMethod.Both => DimMethod.Both,
+        _ => null,
+    };
+
+    static bool? Switch(ProfileSwitch? s) => s switch
+    {
+        ProfileSwitch.On => true,
+        ProfileSwitch.Off => false,
+        _ => null,
+    };
 }

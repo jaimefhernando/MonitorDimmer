@@ -154,6 +154,33 @@
             </ScrollViewer>
         </TabItem>
 
+        <!-- Scenes -->
+        <TabItem x:Name="ScenesTab" Style="{StaticResource NavItem}" AutomationProperties.Name="Scenes">
+            <TabItem.Header>
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource NavIcon}" Data="M12,3 L21,8 L12,13 L3,8 Z M3,12 L12,17 L21,12 M3,16 L12,21 L21,16" />
+                    <TextBlock Text="Scenes" VerticalAlignment="Center" />
+                </StackPanel>
+            </TabItem.Header>
+            <ScrollViewer Style="{StaticResource PageScroll}">
+                <StackPanel>
+                    <StackPanel Style="{StaticResource PageHeader}">
+                        <TextBlock Style="{StaticResource Kicker}" c:Tracking.Text="SEVERAL SETTINGS IN ONE CLICK" />
+                        <TextBlock Text="Scenes" Style="{StaticResource PageTitle}" />
+                    </StackPanel>
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,6"
+                                       Text="A scene changes darkness, lighting, mouse lock, the night tint and the side display together. Switch on Home, from the tray, or with the shortcut. Back to Normal undoes all of it." />
+                            <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding SceneHotkeyEnabled}"
+                                      Content="Ctrl + Alt + S switches to the next scene" />
+                        </StackPanel>
+                    </Border>
+                    <ui:ScenesView x:Name="Scenes" />
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
         <!-- Monitors -->
         <TabItem x:Name="MonitorsTab" Style="{StaticResource NavItem}" AutomationProperties.Name="Monitors">
             <TabItem.Header>
@@ -425,6 +452,24 @@
                             </StackPanel>
                         </Border>
                     </Grid>
+                    <Border Style="{StaticResource Card}" Margin="0,14,0,14">
+                        <StackPanel>
+                            <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding SideDisplayEnabled}">
+                                <TextBlock Text="Quiet side display" FontSize="18" FontWeight="Bold" />
+                            </CheckBox>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Instead of plain black, a dimmed monitor shows a faint clock, how long you've been playing and what's playing. It moves slowly so nothing burns in, and it needs the overlay (or Both) to dim. Scenes can switch it on or off." />
+                            <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding SideDisplayMedia}"
+                                      Content="Show what's playing (Spotify, browsers, media players)" />
+                            <DockPanel Margin="0,8,0,0" MaxWidth="560" HorizontalAlignment="Left">
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding SideDisplayLevel, StringFormat={}{0} %}" FontWeight="Bold"
+                                           Width="48" TextAlignment="Right" Foreground="{DynamicResource TextMain}" VerticalAlignment="Center" />
+                                <TextBlock Text="Text brightness" Style="{StaticResource FieldLabel}" Width="120" />
+                                <Slider Minimum="5" Maximum="50" TickFrequency="5" Width="360" Value="{Binding SideDisplayLevel}"
+                                        AutomationProperties.Name="Side display text brightness" />
+                            </DockPanel>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
         </TabItem>

@@ -75,6 +75,17 @@
                 </Grid>
             </c:ChamferBorder>
 
+            <!-- Scene -->
+            <DockPanel Margin="0,0,0,16">
+                <TextBlock DockPanel.Dock="Left" Style="{StaticResource Kicker}" c:Tracking.Text="SCENE" VerticalAlignment="Center"
+                           Margin="0,0,16,0" />
+                <Button DockPanel.Dock="Right" Content="Edit scenes" Style="{StaticResource LinkButton}" Click="EditScenes_Click"
+                        VerticalAlignment="Center" />
+                <Border Style="{StaticResource SegmentBox}" HorizontalAlignment="Left">
+                    <UniformGrid x:Name="SceneStrip" Rows="1" AutomationProperties.Name="Scene" />
+                </Border>
+            </DockPanel>
+
             <!-- Quick switches -->
             <UniformGrid Columns="4" Margin="0,0,-12,4">
                 <Border Style="{StaticResource Card}" Margin="0,0,12,12" Padding="18">
